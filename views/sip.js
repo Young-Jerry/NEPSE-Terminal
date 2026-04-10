@@ -91,10 +91,6 @@ function renderSip(container) {
             </div>
           </div>
         </form>
-        <div class="ledger-breakdown-card" style="margin-top:12px;">
-          <div class="ledger-breakdown-label">Selected SIP NAV</div>
-          <div class="ledger-breakdown-val mono" id="sip-selected-nav">Rs 0</div>
-        </div>
       </div>
     </div>
 
@@ -160,6 +156,13 @@ function renderSip(container) {
     persist('NAV updated.');
   });
 
+  const navSelectEl = container.querySelector('#sip-nav-select');
+  if (navSelectEl) {
+    navSelectEl.addEventListener('change', () => {
+      if (navForm?.elements?.nav) navForm.elements.nav.value = '';
+    });
+  }
+
   delBtn.addEventListener('click', () => {
     if (!activeSip || activeSip === 'ALL_SIP') return show('Select a SIP to delete.');
     if (DEFAULT_SIPS.includes(activeSip)) return show('Default SIPs cannot be deleted.');
@@ -200,14 +203,26 @@ function renderSip(container) {
     const btn = document.createElement('button');
     btn.className = 'sip-tab-btn' + (activeSip === value ? ' active' : '');
     btn.textContent = label;
-    btn.addEventListener('click', () => { activeSip = value; render(); });
+    btn.addEventListener('click', () => {
+      activeSip = value;
+      if (navForm) navForm.reset();
+      render();
+    });
     return btn;
   }
 
   function renderSelects() {
     const opts = state.sips.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
-    container.querySelector('#sip-inst-select').innerHTML = opts;
-    container.querySelector('#sip-nav-select').innerHTML = opts;
+    const instSelect = container.querySelector('#sip-inst-select');
+    const navSelect = container.querySelector('#sip-nav-select');
+    instSelect.innerHTML = opts;
+    navSelect.innerHTML = opts;
+    if (activeSip !== 'ALL_SIP' && state.sips.includes(activeSip)) {
+      instSelect.value = activeSip;
+      navSelect.value = activeSip;
+    }
+    const navInput = navForm?.elements?.nav;
+    if (navInput) navInput.value = '';
     // Set today in date input if empty
     const dateInput = container.querySelector('#sip-inst-date');
     if (dateInput && !dateInput.value) dateInput.value = todayDate();
@@ -231,7 +246,16 @@ function renderSip(container) {
     const pl = totalValue - totalInvested;
     const roi = totalInvested > 0 ? (pl / totalInvested) * 100 : 0;
 
+    const selectedSipNavCard = activeSip !== 'ALL_SIP'
+      ? `
+      <div class="metric-card">
+        <div class="metric-label">Selected SIP NAV</div>
+        <div class="metric-value mono">Rs ${fmtNav(Number(state.currentNav[activeSip] || 0))}</div>
+      </div>`
+      : '';
+
     el.innerHTML = `
+      ${selectedSipNavCard}
       <div class="metric-card">
         <div class="metric-label">Total Units</div>
         <div class="metric-value">${new Intl.NumberFormat('en-IN').format(Math.floor(totalUnits))}</div>
@@ -253,16 +277,6 @@ function renderSip(container) {
         <div class="metric-value ${plClass(roi)}">${pct(roi)}</div>
       </div>
     `;
-
-    const navEl = container.querySelector('#sip-selected-nav');
-    if (navEl) {
-      const current = activeSip && activeSip !== 'ALL_SIP'
-        ? Number(state.currentNav[activeSip] || 0)
-        : 0;
-      navEl.textContent = activeSip && activeSip !== 'ALL_SIP'
-        ? `${activeSip}: ${currency(current)}`
-        : 'Select one SIP tab to see NAV';
-    }
   }
 
   function renderTable() {
@@ -273,7 +287,7 @@ function renderSip(container) {
 
     const sips = activeSip === 'ALL_SIP' ? state.sips : [activeSip];
     const cols = activeSip === 'ALL_SIP'
-      ? ['SIP','Date','Units','NAV','Amount','Current NAV','Current Value','P/L']
+      ? ['SIP', 'Units', 'WACC', 'Amt', 'CurrentNAV', 'CurrentValue', 'P/L']
       : ['Date','Units','NAV','Amount','Current NAV','Current Value','P/L'];
 
     cols.forEach(c => { const th = document.createElement('th'); th.textContent = c; thead.appendChild(th); });
@@ -281,6 +295,27 @@ function renderSip(container) {
     sips.forEach(sipName => {
       const rows = [...(state.records[sipName] || [])].sort((a, b) => a.date.localeCompare(b.date));
       const currentNav = Number(state.currentNav[sipName] || 0);
+
+      if (activeSip === 'ALL_SIP') {
+        const units = rows.reduce((s, r) => s + Math.floor(Number(r.units || 0)), 0);
+        const amount = rows.reduce((s, r) => s + (Math.floor(Number(r.units || 0)) * Number(r.nav || 0)), 0);
+        const wacc = units > 0 ? amount / units : 0;
+        const currentValue = units * currentNav;
+        const pl = currentValue - amount;
+        const tr = document.createElement('tr');
+        [sipName, fmtQty(units), fmtNav(wacc), currency(amount), fmtNav(currentNav), currency(currentValue)].forEach((val, i) => {
+          const td = document.createElement('td');
+          td.textContent = val;
+          if (i === 0) td.classList.add('text-col');
+          tr.appendChild(td);
+        });
+        const plTd = document.createElement('td');
+        plTd.textContent = currency(pl);
+        plTd.className = plClass(pl);
+        tr.appendChild(plTd);
+        tbody.appendChild(tr);
+        return;
+      }
 
       rows.forEach(row => {
         const amount = Math.floor(Number(row.units || 0)) * Number(row.nav || 0);
@@ -387,6 +422,7 @@ function renderSip(container) {
   function todayDate()  { return new Date().toISOString().slice(0, 10); }
   function month15(month) { return `${month}-15`; }
   function fmtNav(v) { return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0); }
+  function fmtQty(v) { return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(v || 0); }
 
   function persist(msg = 'Saved ✓') {
     state.activeSip = activeSip;

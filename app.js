@@ -84,11 +84,11 @@
   function applyPrivacyMode() {
     document.body.classList.toggle('privacy-on', privacyEnabled);
     if (privacyToggleBtn) {
-      privacyToggleBtn.textContent = privacyEnabled ? 'Hidden' : 'Visible';
+      privacyToggleBtn.textContent = privacyEnabled ? '🙈 Hidden' : '👁 Visible';
       privacyToggleBtn.classList.toggle('active', privacyEnabled);
     }
     if (rsToggleBtn) {
-      rsToggleBtn.textContent = rsPrefixEnabled ? 'Rs Prefix' : 'No Prefix';
+      rsToggleBtn.textContent = rsPrefixEnabled ? '₹ Prefix' : 'Ø Prefix';
       rsToggleBtn.classList.toggle('active', rsPrefixEnabled);
     }
     maskInlineInputs(document, privacyEnabled);
