@@ -88,8 +88,8 @@
         <span class="status-dot" id="statusDot"></span>
         <span id="statusLabel">NEPSE</span>
         <span id="statusTime" class="mono">--:--:--</span>
-        <button class="privacy-eye-btn" id="privacyToggleBtn" title="Hide / show portfolio values" aria-label="Toggle value privacy">Visible</button>
-        <button class="privacy-eye-btn rs-prefix-btn" id="rsToggleBtn" title="Show / hide Rs prefix" aria-label="Toggle Rs prefix">Rs Prefix</button>
+        <button class="privacy-eye-btn" id="privacyToggleBtn" title="Hide / show portfolio values" aria-label="Toggle value privacy">👁 Visible</button>
+        <button class="privacy-eye-btn rs-prefix-btn" id="rsToggleBtn" title="Show / hide Rs prefix" aria-label="Toggle Rs prefix">₹ Prefix</button>
       </div>
 
       <div class="header-cash-box" title="Cash balance">
@@ -102,13 +102,13 @@
         UPDATE LTP
       </button>
       <input type="file" id="ltpFileInput" accept=".csv" style="display:none" />
-      <button class="tb-btn tb-btn-ghost" id="downloadDataBtn" title="Download backup JSON">
-        <svg viewBox="0 0 14 14" width="11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v8M4 6l3 3 3-3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
-        EXPORT
+      <button class="tb-btn tb-btn-ghost tb-btn-stack" id="downloadDataBtn" title="Download backup JSON">
+        <svg viewBox="0 0 14 14" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v8M4 6l3 3 3-3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
+        <span>EXPORT</span>
       </button>
-      <button class="tb-btn tb-btn-ghost" id="uploadDataBtn" title="Restore from backup JSON">
-        <svg viewBox="0 0 14 14" width="11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 9V1M4 4l3-3 3 3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
-        IMPORT
+      <button class="tb-btn tb-btn-ghost tb-btn-stack" id="uploadDataBtn" title="Restore from backup JSON">
+        <svg viewBox="0 0 14 14" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 9V1M4 4l3-3 3 3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
+        <span>IMPORT</span>
       </button>
       <input type="file" id="dataFileInput" accept=".json" style="display:none" />
       <button class="user-chip" id="userProfileBtn" title="User profile" aria-label="User profile">

@@ -113,6 +113,7 @@
 
     const sipDays = daysUntil15th();
     const sipProg = Math.max(0, Math.min(100, ((30 - sipDays) / 30) * 100));
+    const sipRoiCards = buildSipRoiCards();
 
     container.innerHTML = `
       <div class="kpi-strip dash-row">
@@ -146,6 +147,7 @@
             <div class="sip-label">${sipDays === 0 ? 'INVEST NOW' : `DAY${sipDays !== 1 ? 'S' : ''} UNTIL 15TH`}</div>
             <div class="sip-bar" style="width:120px;"><div class="sip-bar-fill" style="width:${sipProg}%;"></div></div>
           </div>
+          <div class="dash-sip-roi-grid">${sipRoiCards}</div>
         </div>
       </div>
 
@@ -228,6 +230,28 @@
     if (kpiRoi) kpiRoi.addEventListener('click', () => showRoiModal(realized));
     const kpiNw = container.querySelector('#dash-kpi-nw');
     if (kpiNw) kpiNw.addEventListener('click', () => showNetWorthModal(totals));
+  }
+
+  function buildSipRoiCards() {
+    const sipState = readSipState();
+    const defaultNames = ['SSIS', 'KSLY'];
+    return defaultNames.map(name => {
+      const rows = Array.isArray((sipState.records || {})[name]) ? sipState.records[name] : [];
+      const units = rows.reduce((s, r) => s + Math.floor(Number(r.units || 0)), 0);
+      const invested = rows.reduce((s, r) => s + (Math.floor(Number(r.units || 0)) * Number(r.nav || 0)), 0);
+      const currentNav = Number((sipState.currentNav || {})[name] || 0);
+      const currentValue = units * currentNav;
+      const profit = currentValue - invested;
+      const roi = invested > 0 ? (profit / invested) * 100 : 0;
+      const cls = roi > 0 ? 'profit' : roi < 0 ? 'loss' : '';
+      const tip = `Invested: ${fmtRs(invested, 0)} | Profit: ${fmtRs(profit, 0)}`;
+      return `
+        <div class="dash-sip-roi-item">
+          <span class="dash-sip-roi-name">${name} ROI</span>
+          <span class="dash-sip-roi-val ${cls}" title="${tip}">${plSign(roi)}${fmtPct(roi, 2)}</span>
+        </div>
+      `;
+    }).join('');
   }
 
   function bindSortClicks(container, prefix, onClick) {
