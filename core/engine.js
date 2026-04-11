@@ -343,14 +343,39 @@ const MarketIndex = (() => {
     return next;
   }
 
-  function calculateMarketIndex(csvRows) {
+  function calculateMarketIndex(csvRows, previousIndexValue) {
     if (!Array.isArray(csvRows) || csvRows.length < 2) throw new Error('CSV must include header and at least one data row');
     const headers = csvRows[0].map(h => String(h || '').toLowerCase().trim());
+    const symbolIndex = headers.findIndex(h => h === 'symbol' || h.includes('symbol') || h.includes('ticker'));
+    const securityNameIndex = headers.findIndex(h => h === 'security name' || (h.includes('security') && h.includes('name')));
     const closeIndex = headers.findIndex(h => h === 'close price' || h === 'close' || h.includes('close price'));
-    const marketCapIndex = headers.findIndex(h => h === 'market cap' || h === 'marketcap' || (h.includes('market') && h.includes('cap')));
+    const previousCloseIndex = headers.findIndex(h => h === 'previous day close price' || (h.includes('previous') && h.includes('close')));
+    const marketCapIndex = headers.findIndex(h => h === 'market cap' || h === 'market capitalization' || h === 'marketcap' || (h.includes('market') && h.includes('cap')));
     if (closeIndex === -1 || marketCapIndex === -1) throw new Error('Missing required columns: Close Price and Market Cap');
 
+
+    if (symbolIndex !== -1 || securityNameIndex !== -1) {
+      for (const row of csvRows.slice(1)) {
+        const symbol = symbolIndex !== -1 ? String(row[symbolIndex] || '').trim().toUpperCase() : '';
+        const secName = securityNameIndex !== -1 ? String(row[securityNameIndex] || '').trim().toUpperCase() : '';
+        if (!symbol && !secName) continue;
+        if (symbol === 'NEPSE' || secName === 'NEPSE' || secName.includes('NEPSE INDEX')) {
+          const explicitValue = parseNumber(row[closeIndex]);
+          if (Number.isFinite(explicitValue) && explicitValue > 0) {
+            return {
+              value: explicitValue,
+              includedCount: 1,
+              marketCapTotal: null,
+              previousMarketCapTotal: null,
+              calculationMode: 'explicit-index-row',
+            };
+          }
+        }
+      }
+    }
+
     let marketCapTotal = 0;
+    let previousMarketCapTotal = 0;
     let includedCount = 0;
 
     csvRows.slice(1).forEach(row => {
@@ -359,37 +384,74 @@ const MarketIndex = (() => {
       if (!Number.isFinite(ltp) || !Number.isFinite(marketCap) || marketCap <= 0 || ltp <= 0) return;
       marketCapTotal += marketCap;
       includedCount++;
+
+      if (previousCloseIndex !== -1) {
+        const previousClose = parseNumber(row[previousCloseIndex]);
+        if (Number.isFinite(previousClose) && previousClose > 0) {
+          previousMarketCapTotal += marketCap * (previousClose / ltp);
+        }
+      }
     });
 
     if (!Number.isFinite(marketCapTotal) || marketCapTotal <= 0) {
       throw new Error('No valid rows found for index calculation');
     }
 
-    // NEPSE CSV market-cap values are already normalized, and the headline index
-    // is derived from aggregate market capitalization scaled by 1,000.
+    if (
+      Number.isFinite(previousIndexValue) && previousIndexValue > 0
+      && Number.isFinite(previousMarketCapTotal) && previousMarketCapTotal > 0
+    ) {
+      return {
+        value: previousIndexValue * (marketCapTotal / previousMarketCapTotal),
+        includedCount,
+        marketCapTotal,
+        previousMarketCapTotal,
+        calculationMode: 'previous-index-scaled',
+      };
+    }
+
     return {
       value: marketCapTotal / 1000,
       includedCount,
+      marketCapTotal,
+      previousMarketCapTotal: Number.isFinite(previousMarketCapTotal) ? previousMarketCapTotal : null,
+      calculationMode: 'bootstrap-marketcap',
     };
   }
 
   function updateFromCsvRows(csvRows) {
     const previous = readState();
     const previousValue = Number(previous.currentIndexValue);
-    const nextCalc = calculateMarketIndex(csvRows);
+    const nextCalc = calculateMarketIndex(csvRows, previousValue);
     const currentIndexValue = nextCalc.value;
     const hasPrevious = Number.isFinite(previousValue) && previousValue > 0;
     const indexChange = hasPrevious ? currentIndexValue - previousValue : 0;
     const indexChangePct = hasPrevious ? (indexChange / previousValue) * 100 : 0;
 
-    return writeState({
+    const nextState = {
       currentIndexValue,
       previousIndexValue: hasPrevious ? previousValue : null,
       indexChange,
       indexChangePct,
       includedCount: nextCalc.includedCount,
       updatedAt: new Date().toISOString(),
+      debug: {
+        calculationMode: nextCalc.calculationMode,
+        marketCapTotal: Number.isFinite(nextCalc.marketCapTotal) ? nextCalc.marketCapTotal : null,
+        previousMarketCapTotal: Number.isFinite(nextCalc.previousMarketCapTotal) ? nextCalc.previousMarketCapTotal : null,
+      },
+    };
+
+    console.info('[MarketIndex] CSV update metrics', {
+      currentIndexValue: nextState.currentIndexValue,
+      previousIndexValue: nextState.previousIndexValue,
+      includedCount: nextState.includedCount,
+      marketCapTotal: nextState.debug.marketCapTotal,
+      previousMarketCapTotal: nextState.debug.previousMarketCapTotal,
+      calculationMode: nextState.debug.calculationMode,
     });
+
+    return writeState(nextState);
   }
 
   return { calculateMarketIndex, updateFromCsvRows, readState };
@@ -407,9 +469,69 @@ const LtpUpdater = (() => {
 
   function parseCSV(text) {
     if (!text || !String(text).trim()) throw new Error('CSV file is empty');
-    const lines = String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    if (!lines.length) throw new Error('CSV file is empty');
-    return lines.map(line => line.split(',').map(cell => cell.trim().replace(/^"|"$/g, '')));
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let inQuotes = false;
+    const input = String(text).replace(/\r\n?/g, '\n');
+
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      if (ch === '"') {
+        if (inQuotes && input[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (ch === ',' && !inQuotes) {
+        row.push(cell.trim());
+        cell = '';
+        continue;
+      }
+      if (ch === '\n' && !inQuotes) {
+        row.push(cell.trim());
+        if (row.some(v => v !== '')) rows.push(row);
+        row = [];
+        cell = '';
+        continue;
+      }
+      cell += ch;
+    }
+
+    if (cell.length || row.length) {
+      row.push(cell.trim());
+      if (row.some(v => v !== '')) rows.push(row);
+    }
+    if (!rows.length) throw new Error('CSV file is empty');
+
+    const header = rows[0].map(v => String(v || '').trim().replace(/^"|"$/g, ''));
+    const headerLen = header.length;
+    const securityNameIndex = header.findIndex(h => h.toLowerCase() === 'security name');
+    const normalizedRows = [header];
+
+    rows.slice(1).forEach((rawRow) => {
+      const cleaned = rawRow.map(v => String(v || '').trim().replace(/^"|"$/g, ''));
+      if (cleaned.length === headerLen) {
+        normalizedRows.push(cleaned);
+        return;
+      }
+      if (cleaned.length > headerLen && securityNameIndex !== -1) {
+        const tailCount = headerLen - securityNameIndex - 1;
+        const head = cleaned.slice(0, securityNameIndex);
+        const tail = cleaned.slice(cleaned.length - tailCount);
+        const nameParts = cleaned.slice(securityNameIndex, cleaned.length - tailCount);
+        normalizedRows.push([...head, nameParts.join(','), ...tail]);
+        return;
+      }
+      if (cleaned.length < headerLen) {
+        normalizedRows.push([...cleaned, ...Array(headerLen - cleaned.length).fill('')]);
+      }
+    });
+
+    return normalizedRows;
   }
 
   function buildLtpMap(rows) {
