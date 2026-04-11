@@ -19,6 +19,11 @@
   }
   function plCls(v) { return Number(v) > 0 ? 'profit' : Number(v) < 0 ? 'loss' : ''; }
   function plSign(v) { return Number(v) > 0 ? '+' : ''; }
+  function hasFinite(v) { return Number.isFinite(Number(v)); }
+
+  function readMarketIndexState() {
+    return window.MarketIndex && window.MarketIndex.readState ? window.MarketIndex.readState() : {};
+  }
 
   function readArr(key) {
     try {
@@ -103,6 +108,7 @@
     const realized = getRealizedRoi();
     const latestRows = getLatestTrades();
     const longTermGain = Math.abs(Number(totals.longterm.value || 0) - Number(totals.longterm.invested || 0));
+    const marketIndex = readMarketIndexState();
 
     const tradeSort = container._tradeSort || { key: 'script', dir: 'asc' };
     const longSort = container._longSort || { key: 'script', dir: 'asc' };
@@ -135,6 +141,14 @@
         <div class="kpi-card kpi-cash" id="dash-kpi-cash">
           <div class="kpi-label">CASH BALANCE</div>
           <div class="kpi-value cash-color mono">${fmtRs(Math.abs(cash), 0)}</div>
+        </div>
+
+        <div class="kpi-card" id="dash-kpi-market-index">
+          <div class="kpi-label">MARKET INDEX</div>
+          <div class="kpi-value neutral mono">${hasFinite(marketIndex.currentIndexValue) ? fmt(marketIndex.currentIndexValue, 2) : '—'}</div>
+          <div class="kpi-sub mono ${plCls(marketIndex.indexChange)}">
+            ${hasFinite(marketIndex.currentIndexValue) ? `${plSign(marketIndex.indexChange)}${fmt(marketIndex.indexChange, 2)} (${plSign(marketIndex.indexChangePct)}${fmtPct(marketIndex.indexChangePct, 2)})` : 'Awaiting LTP update'}
+          </div>
         </div>
       </div>
 

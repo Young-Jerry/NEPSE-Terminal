@@ -317,6 +317,86 @@ const AppState = (() => {
 
 window.AppState = AppState;
 
+// ─── MARKET INDEX (derived from LTP CSV upload) ──────────────────────────
+const MarketIndex = (() => {
+  const STORAGE_KEY = 'marketIndexStateV1';
+
+  function parseNumber(value) {
+    const raw = String(value ?? '').replace(/,/g, '').trim();
+    if (!raw) return NaN;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function readState() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeState(next) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent('pms-market-index-updated', { detail: next }));
+    return next;
+  }
+
+  function calculateMarketIndex(csvRows) {
+    if (!Array.isArray(csvRows) || csvRows.length < 2) throw new Error('CSV must include header and at least one data row');
+    const headers = csvRows[0].map(h => String(h || '').toLowerCase().trim());
+    const closeIndex = headers.findIndex(h => h === 'close price' || h === 'close' || h.includes('close price'));
+    const marketCapIndex = headers.findIndex(h => h === 'market cap' || h === 'marketcap' || (h.includes('market') && h.includes('cap')));
+    if (closeIndex === -1 || marketCapIndex === -1) throw new Error('Missing required columns: Close Price and Market Cap');
+
+    let weightedTotal = 0;
+    let marketCapTotal = 0;
+    let includedCount = 0;
+
+    csvRows.slice(1).forEach(row => {
+      const ltp = parseNumber(row[closeIndex]);
+      const marketCap = parseNumber(row[marketCapIndex]);
+      if (!Number.isFinite(ltp) || !Number.isFinite(marketCap) || marketCap <= 0 || ltp <= 0) return;
+      weightedTotal += (ltp * marketCap);
+      marketCapTotal += marketCap;
+      includedCount++;
+    });
+
+    if (!Number.isFinite(weightedTotal) || !Number.isFinite(marketCapTotal) || marketCapTotal <= 0) {
+      throw new Error('No valid rows found for index calculation');
+    }
+
+    return {
+      value: weightedTotal / marketCapTotal,
+      includedCount,
+    };
+  }
+
+  function updateFromCsvRows(csvRows) {
+    const previous = readState();
+    const previousValue = Number(previous.currentIndexValue);
+    const nextCalc = calculateMarketIndex(csvRows);
+    const currentIndexValue = nextCalc.value;
+    const hasPrevious = Number.isFinite(previousValue) && previousValue > 0;
+    const indexChange = hasPrevious ? currentIndexValue - previousValue : 0;
+    const indexChangePct = hasPrevious ? (indexChange / previousValue) * 100 : 0;
+
+    return writeState({
+      currentIndexValue,
+      previousIndexValue: hasPrevious ? previousValue : null,
+      indexChange,
+      indexChangePct,
+      includedCount: nextCalc.includedCount,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return { calculateMarketIndex, updateFromCsvRows, readState };
+})();
+
+window.MarketIndex = MarketIndex;
+
 // ─── LTP UPDATER (preserved from ltp-updater.js) ──────────────────────────
 const LtpUpdater = (() => {
   const TARGET_KEYS = ['trades', 'longterm'];
@@ -372,7 +452,8 @@ const LtpUpdater = (() => {
     const rows = parseCSV(text);
     const ltpMap = buildLtpMap(rows);
     const updated = applyLtpMap(ltpMap);
-    window.dispatchEvent(new CustomEvent('pms-ltp-updated', { detail: { updated } }));
+    const marketIndex = window.MarketIndex ? window.MarketIndex.updateFromCsvRows(rows) : null;
+    window.dispatchEvent(new CustomEvent('pms-ltp-updated', { detail: { updated, marketIndex } }));
     return updated;
   }
 
