@@ -5,17 +5,21 @@
   function maskDigits(value) {
     return window.PmsPrivacy && window.PmsPrivacy.maskDigits ? window.PmsPrivacy.maskDigits(value) : String(value || '');
   }
+  function maskValue() {
+    return window.PmsPrivacy && window.PmsPrivacy.maskValue ? window.PmsPrivacy.maskValue() : 'XXX';
+  }
   function fmt(n, dec = 0) {
     const out = new Intl.NumberFormat('en-IN', { minimumFractionDigits: dec, maximumFractionDigits: dec }).format(Number(n || 0));
-    return window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskDigits(out) : out;
+    return window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : out;
   }
   function fmtRs(n, dec = 0) {
+    if (window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled()) return maskValue();
     const prefix = window.PmsDisplay && window.PmsDisplay.showRsPrefix && !window.PmsDisplay.showRsPrefix() ? '' : 'Rs ';
     return `${prefix}${fmt(n, dec)}`;
   }
   function fmtPct(n, dec = 2) {
     const out = `${Number(n || 0).toFixed(dec)}%`;
-    return window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskDigits(out) : out;
+    return window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : out;
   }
   function plCls(v) { return Number(v) > 0 ? 'profit' : Number(v) < 0 ? 'loss' : ''; }
   function plSign(v) { return Number(v) > 0 ? '+' : ''; }
@@ -57,7 +61,7 @@
 
   function getLatestTrades() {
     const trades = readArr('trades').map(r => ({ ...r, _type: 'TRADES' }));
-    return trades.slice(-2).reverse();
+    return trades.slice(-3).reverse();
   }
 
   function calcSellReceivable(row, kind) {
@@ -114,6 +118,10 @@
     const sipDays = daysUntil15th();
     const sipProg = Math.max(0, Math.min(100, ((30 - sipDays) / 30) * 100));
     const sipRoiCards = buildSipRoiCards();
+    const targetWorth = 150000000;
+    const currentWorth = Number(totals.total || 0) + Math.max(0, cash);
+    const completion = Math.max(0, Math.min(100, (currentWorth / targetWorth) * 100));
+    const diffFromTarget = currentWorth - targetWorth;
 
     container.innerHTML = `
       <div class="kpi-strip dash-row">
@@ -137,6 +145,15 @@
           <div class="kpi-value cash-color mono">${fmtRs(Math.abs(cash), 0)}</div>
         </div>
 
+      </div>
+      <div class="target-progress-card dash-row" title="${fmtRs(diffFromTarget, 0)} vs target">
+        <div class="target-progress-head">
+          <span>TARGET 15 CRORE</span>
+          <strong>${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : `${completion.toFixed(2)}%`}</strong>
+        </div>
+        <div class="target-progress-track">
+          <div class="target-progress-fill" style="width:${completion.toFixed(2)}%;"></div>
+        </div>
       </div>
 
       <div class="info-strip dash-row">

@@ -100,7 +100,12 @@ function createPortfolioView({ storageKey, showRanges = false, showInvested = tr
   filterEl.addEventListener('input', () => { filterText = filterEl.value.trim().toLowerCase(); render(); });
   massBtn.addEventListener('click', openMassEdit);
 
-  window.addEventListener('pms-ltp-updated', () => { rows = readRows(); render(); });
+  window.addEventListener('pms-ltp-updated', () => {
+    rows = readRows();
+    render();
+    if (window.PmsPrivacy && window.PmsPrivacy.apply) window.PmsPrivacy.apply();
+  });
+  window.addEventListener('pms-privacy-changed', () => render());
   window.addEventListener('storage', (e) => {
     if (!e.key || e.key === storageKey) { rows = readRows(); render(); }
   });

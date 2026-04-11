@@ -73,7 +73,7 @@ function isPrivacyMode() {
 }
 
 function maskDigits(value) {
-  return String(value || '').replace(/\d/g, 'X');
+  return window.PmsPrivacy && window.PmsPrivacy.maskValue ? window.PmsPrivacy.maskValue() : 'XXX';
 }
 
 function showRsPrefix() {
@@ -105,6 +105,7 @@ function pct(value, decimals = 1) {
 }
 
 function plClass(value) {
+  if (isPrivacyMode()) return 'value-neutral';
   return Number(value) >= 0 ? 'value-profit' : 'value-loss';
 }
 

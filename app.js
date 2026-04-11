@@ -64,11 +64,15 @@
     return String(text || '').replace(/\d/g, 'X');
   }
 
+  function maskValue() {
+    return 'XXX';
+  }
+
   function maskInlineInputs(root, enabled) {
     root.querySelectorAll('input.inline-edit, input.ltp-input').forEach((input) => {
       if (enabled) {
-        if (!input.dataset.realValue) input.dataset.realValue = input.value;
-        input.value = maskDigits(input.dataset.realValue);
+        input.dataset.realValue = input.value;
+        input.value = maskValue();
         input.type = 'text';
         input.readOnly = true;
         input.classList.add('privacy-masked-input');
@@ -84,11 +88,11 @@
   function applyPrivacyMode() {
     document.body.classList.toggle('privacy-on', privacyEnabled);
     if (privacyToggleBtn) {
-      privacyToggleBtn.textContent = privacyEnabled ? 'HIDDEN' : 'VISIBLE';
+      privacyToggleBtn.textContent = privacyEnabled ? 'HIDE' : 'SHOW';
       privacyToggleBtn.classList.toggle('active', privacyEnabled);
     }
     if (rsToggleBtn) {
-      rsToggleBtn.textContent = rsPrefixEnabled ? '₹ Prefix' : 'Ø Prefix';
+      rsToggleBtn.textContent = rsPrefixEnabled ? '₹ ON' : '₹ OFF';
       rsToggleBtn.classList.toggle('active', rsPrefixEnabled);
     }
     maskInlineInputs(document, privacyEnabled);
@@ -108,6 +112,8 @@
   window.PmsPrivacy = {
     isEnabled: () => privacyEnabled,
     maskDigits,
+    maskValue,
+    apply: applyPrivacyMode,
     setEnabled: setPrivacyMode,
   };
 
@@ -158,7 +164,6 @@
         <div class="quick-calc-wrap">
           <input class="form-input quick-calc-input mono" id="quickCalcInput" placeholder="Type or paste expression e.g. (1200+345)/3" />
           <div class="quick-calc-actions">
-            <button class="btn-secondary" id="quickCalcPasteBtn" type="button">Paste</button>
             <button class="btn-primary" id="quickCalcEvalBtn" type="button">= Evaluate</button>
             <button class="btn-secondary" id="quickCalcClearBtn" type="button">Clear</button>
           </div>
@@ -185,7 +190,20 @@
     const pad = calcFloat.querySelector('#quickCalcPad');
     const evalBtn = calcFloat.querySelector('#quickCalcEvalBtn');
     const clearBtn = calcFloat.querySelector('#quickCalcClearBtn');
-    const pasteBtn = calcFloat.querySelector('#quickCalcPasteBtn');
+    function normalizeCalcInput(raw) {
+      return String(raw || '').replace(/,/g, '');
+    }
+
+    function formatCalcInput(raw) {
+      const clean = normalizeCalcInput(raw);
+      if (!clean || /[+\-*/()%]/.test(clean)) return clean;
+      if (!/^-?\d*\.?\d*$/.test(clean)) return clean;
+      const [intPart, decPart] = clean.split('.');
+      const sign = intPart.startsWith('-') ? '-' : '';
+      const absInt = sign ? intPart.slice(1) : intPart;
+      const grouped = absInt ? new Intl.NumberFormat('en-IN').format(Number(absInt)) : '0';
+      return decPart != null ? `${sign}${grouped}.${decPart}` : `${sign}${grouped}`;
+    }
 
     function renderHistory() {
       const history = readQuickCalcHistory();
@@ -201,7 +219,7 @@
     }
 
     function evaluateExpression(raw) {
-      const normalized = String(raw || '').replace(/[×x]/g, '*').replace(/[÷]/g, '/').trim();
+      const normalized = normalizeCalcInput(String(raw || '').replace(/[×x]/g, '*').replace(/[÷]/g, '/')).trim();
       if (!normalized) return { ok: false, message: 'Result: -' };
       if (!/^[\d+\-*/%().\s]+$/.test(normalized)) return { ok: false, message: 'Result: Invalid expression' };
       try {
@@ -220,9 +238,9 @@
         return;
       }
       const result = Number(outcome.result.toFixed(10));
-      resultEl.textContent = `Result: ${result}`;
+      resultEl.textContent = `Result: ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 10 }).format(result)}`;
       const history = readQuickCalcHistory();
-      history.unshift({ expr: input.value.trim(), result });
+      history.unshift({ expr: normalizeCalcInput(input.value.trim()), result: new Intl.NumberFormat('en-IN', { maximumFractionDigits: 10 }).format(result) });
       writeQuickCalcHistory(history);
       renderHistory();
     }
@@ -239,14 +257,10 @@
         applyEvaluate();
       }
     });
-    pasteBtn.addEventListener('click', async () => {
-      try {
-        const clip = await navigator.clipboard.readText();
-        if (clip) input.value = clip;
-        input.focus();
-      } catch {
-        input.focus();
-      }
+    input.addEventListener('input', () => {
+      const pos = input.selectionStart;
+      input.value = formatCalcInput(input.value);
+      if (typeof pos === 'number') input.setSelectionRange(Math.min(pos, input.value.length), Math.min(pos, input.value.length));
     });
 
     if (pad) {
@@ -260,7 +274,7 @@
           input.focus();
           return;
         }
-        input.value += token;
+        input.value = formatCalcInput(input.value + token);
         input.focus();
       });
     }
@@ -358,6 +372,10 @@
     if (window.PmsCapital) {
       const cash = window.PmsCapital.readCash();
       if (headerCash) {
+        if (window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled()) {
+          headerCash.textContent = window.PmsPrivacy.maskValue();
+          return;
+        }
         headerCash.textContent = `Rs ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(cash)}`;
         if (window.PmsDisplay && !window.PmsDisplay.showRsPrefix()) {
           headerCash.textContent = `${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(cash)}`;
