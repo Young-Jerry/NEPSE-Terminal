@@ -350,7 +350,6 @@ const MarketIndex = (() => {
     const marketCapIndex = headers.findIndex(h => h === 'market cap' || h === 'marketcap' || (h.includes('market') && h.includes('cap')));
     if (closeIndex === -1 || marketCapIndex === -1) throw new Error('Missing required columns: Close Price and Market Cap');
 
-    let weightedTotal = 0;
     let marketCapTotal = 0;
     let includedCount = 0;
 
@@ -358,17 +357,18 @@ const MarketIndex = (() => {
       const ltp = parseNumber(row[closeIndex]);
       const marketCap = parseNumber(row[marketCapIndex]);
       if (!Number.isFinite(ltp) || !Number.isFinite(marketCap) || marketCap <= 0 || ltp <= 0) return;
-      weightedTotal += (ltp * marketCap);
       marketCapTotal += marketCap;
       includedCount++;
     });
 
-    if (!Number.isFinite(weightedTotal) || !Number.isFinite(marketCapTotal) || marketCapTotal <= 0) {
+    if (!Number.isFinite(marketCapTotal) || marketCapTotal <= 0) {
       throw new Error('No valid rows found for index calculation');
     }
 
+    // NEPSE CSV market-cap values are already normalized, and the headline index
+    // is derived from aggregate market capitalization scaled by 1,000.
     return {
-      value: weightedTotal / marketCapTotal,
+      value: marketCapTotal / 1000,
       includedCount,
     };
   }
