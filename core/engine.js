@@ -353,6 +353,7 @@ const MarketIndex = (() => {
     const marketCapIndex = headers.findIndex(h => h === 'market cap' || h === 'market capitalization' || h === 'marketcap' || (h.includes('market') && h.includes('cap')));
     if (closeIndex === -1 || marketCapIndex === -1) throw new Error('Missing required columns: Close Price and Market Cap');
 
+
     if (symbolIndex !== -1 || securityNameIndex !== -1) {
       for (const row of csvRows.slice(1)) {
         const symbol = symbolIndex !== -1 ? String(row[symbolIndex] || '').trim().toUpperCase() : '';
@@ -409,7 +410,6 @@ const MarketIndex = (() => {
       };
     }
 
-    // Bootstrap fallback when there is no previous index state available.
     return {
       value: marketCapTotal / 1000,
       includedCount,
