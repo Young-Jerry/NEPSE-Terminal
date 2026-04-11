@@ -21,10 +21,6 @@
   function plSign(v) { return Number(v) > 0 ? '+' : ''; }
   function hasFinite(v) { return Number.isFinite(Number(v)); }
 
-  function readMarketIndexState() {
-    return window.MarketIndex && window.MarketIndex.readState ? window.MarketIndex.readState() : {};
-  }
-
   function readArr(key) {
     try {
       const p = JSON.parse(localStorage.getItem(key) || '[]');
@@ -108,8 +104,6 @@
     const realized = getRealizedRoi();
     const latestRows = getLatestTrades();
     const longTermGain = Math.abs(Number(totals.longterm.value || 0) - Number(totals.longterm.invested || 0));
-    const marketIndex = readMarketIndexState();
-
     const tradeSort = container._tradeSort || { key: 'script', dir: 'asc' };
     const longSort = container._longSort || { key: 'script', dir: 'asc' };
     const tradeFilter = container._tradeFilter || '';
@@ -143,23 +137,20 @@
           <div class="kpi-value cash-color mono">${fmtRs(Math.abs(cash), 0)}</div>
         </div>
 
-        <div class="kpi-card" id="dash-kpi-market-index">
-          <div class="kpi-label">MARKET INDEX</div>
-          <div class="kpi-value neutral mono">${hasFinite(marketIndex.currentIndexValue) ? fmt(marketIndex.currentIndexValue, 2) : '—'}</div>
-          <div class="kpi-sub mono ${plCls(marketIndex.indexChange)}">
-            ${hasFinite(marketIndex.currentIndexValue) ? `${plSign(marketIndex.indexChange)}${fmt(marketIndex.indexChange, 2)} (${plSign(marketIndex.indexChangePct)}${fmtPct(marketIndex.indexChangePct, 2)})` : 'Awaiting LTP update'}
-          </div>
-        </div>
       </div>
 
       <div class="info-strip dash-row">
         <div class="info-card" id="dash-watchlist-panel" style="padding:0;overflow:hidden;"></div>
-        <div class="info-card" style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;" id="dash-sip-card">
-          <div class="info-card-title" style="margin-bottom:0;">SIP DUE</div>
+        <div class="info-card" id="dash-sip-card">
+          <div class="info-card-title" style="margin-bottom:0;">SIP DUE SUMMARY</div>
           <div class="sip-countdown">
             <div class="sip-days">${sipDays === 0 ? 'TODAY' : sipDays}</div>
             <div class="sip-label">${sipDays === 0 ? 'INVEST NOW' : `DAY${sipDays !== 1 ? 'S' : ''} UNTIL 15TH`}</div>
-            <div class="sip-bar" style="width:120px;"><div class="sip-bar-fill" style="width:${sipProg}%;"></div></div>
+            <div class="sip-bar"><div class="sip-bar-fill" style="width:${sipProg}%;"></div></div>
+          </div>
+          <div class="sip-meta-row">
+            <div class="sip-meta-chip"><span>Target Date</span><strong>15 ${new Date().toLocaleString('en-US', { month: 'short' })}</strong></div>
+            <div class="sip-meta-chip"><span>Coverage</span><strong>${sipProg.toFixed(0)}%</strong></div>
           </div>
           <div class="dash-sip-roi-grid">${sipRoiCards}</div>
         </div>
@@ -168,29 +159,26 @@
       <div class="dash-row" id="dash-best-wrap">
         <div class="best-stock-card latest-trade-card">
           <div class="info-card-title latest-head" style="margin-bottom:8px;">LATEST ADDED TRADE</div>
-          <table class="pf-mini-table latest-table">
-            <thead>
-              <tr><th>SCRIPT</th><th>QTY</th><th>LTP</th><th>TOTAL INVESTED</th><th>SELL</th><th>P/L</th><th>P/L PER SHARE</th></tr>
-            </thead>
-            <tbody>
-              ${latestRows.length ? latestRows.map((row) => {
-                const invested = Number(row.wacc || 0) * Number(row.qty || 0);
-                const sell = calcSellReceivable(row, 'trade');
-                const plAfterTax = sell - invested;
-                const qty = Number(row.qty || 0);
-                const plPerShare = qty > 0 ? plAfterTax / qty : 0;
-                return `<tr>
-                <td style="font-weight:700;color:var(--text-primary);">${row.script || '-'}</td>
-                <td>${fmt(row.qty, 0)}</td>
-                <td>${fmtRs(row.ltp, 2)}</td>
-                <td><span class="invested-info" title="WACC: ${fmtRs(row.wacc, 2)}">${fmtRs(invested, 0)}</span></td>
-                <td class="${sell >= invested ? 'profit' : 'loss'}">${fmtRs(sell, 0)}</td>
-                <td class="${plAfterTax >= 0 ? 'profit' : 'loss'}">${plSign(plAfterTax)}${fmtRs(plAfterTax, 0)}</td>
-                <td class="${plPerShare >= 0 ? 'profit' : 'loss'}">${plSign(plPerShare)}${fmtRs(plPerShare, 2)}</td>
-              </tr>`;
-              }).join('') : `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No trades added yet</td></tr>`}
-            </tbody>
-          </table>
+          <div class="latest-trade-list">
+            ${latestRows.length ? latestRows.map((row) => {
+              const invested = Number(row.wacc || 0) * Number(row.qty || 0);
+              const sell = calcSellReceivable(row, 'trade');
+              const plAfterTax = sell - invested;
+              const qty = Number(row.qty || 0);
+              const plPerShare = qty > 0 ? plAfterTax / qty : 0;
+              return `<div class="latest-trade-item">
+                <div class="latest-trade-title">${row.script || '-'}</div>
+                <div class="latest-trade-meta">
+                  <span><label>QTY</label><strong>${fmt(row.qty, 0)}</strong></span>
+                  <span><label>LTP</label><strong>${fmtRs(row.ltp, 2)}</strong></span>
+                  <span><label>INVESTED</label><strong title="WACC: ${fmtRs(row.wacc, 2)}">${fmtRs(invested, 0)}</strong></span>
+                  <span><label>SELL</label><strong class="${sell >= invested ? 'profit' : 'loss'}">${fmtRs(sell, 0)}</strong></span>
+                  <span><label>P/L</label><strong class="${plAfterTax >= 0 ? 'profit' : 'loss'}">${plSign(plAfterTax)}${fmtRs(plAfterTax, 0)}</strong></span>
+                  <span><label>P/L SHARE</label><strong class="${plPerShare >= 0 ? 'profit' : 'loss'}">${plSign(plPerShare)}${fmtRs(plPerShare, 2)}</strong></span>
+                </div>
+              </div>`;
+            }).join('') : '<div class="latest-trade-empty">No trades added yet</div>'}
+          </div>
         </div>
       </div>
 

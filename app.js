@@ -84,7 +84,7 @@
   function applyPrivacyMode() {
     document.body.classList.toggle('privacy-on', privacyEnabled);
     if (privacyToggleBtn) {
-      privacyToggleBtn.textContent = privacyEnabled ? '🙈 Hidden' : '👁 Visible';
+      privacyToggleBtn.textContent = privacyEnabled ? 'HIDDEN' : 'VISIBLE';
       privacyToggleBtn.classList.toggle('active', privacyEnabled);
     }
     if (rsToggleBtn) {

@@ -1,10 +1,10 @@
 /**
- * Dashboard Watchlist (8 trade slots + 4 long-term slots)
+ * Dashboard Watchlist (6 trade slots + 2 long-term slots)
  */
 (function () {
   const WL_KEY = 'nepse_watchlist_v1';
-  const REGULAR_SLOTS = 8;
-  const LONG_SLOTS = 4;
+  const REGULAR_SLOTS = 6;
+  const LONG_SLOTS = 2;
 
   function load() {
     try {
@@ -61,15 +61,17 @@
 
     container.innerHTML = `
       <div class="wl-panel compact">
-        <div class="wl-header"><span class="wl-title">▸ WATCHLIST</span><span class="wl-meta">${pinned}/12 pinned</span></div>
+        <div class="wl-header"><span class="wl-title">WATCHLIST</span><span class="wl-meta">${pinned}/8 pinned</span></div>
         <div class="wl-grid-wrap">
-          <div class="wl-block-title">TRADES</div>
-          <div class="wl-grid-8 wl-grid-trades" data-section-wrap="regular">
-            ${state.regular.map((sym, i) => boxHtml('regular', sym, map, i)).join('')}
-          </div>
-          <div class="wl-block-title wl-block-title-long">LONG TERMS</div>
-          <div class="wl-grid-8 wl-grid-long" data-section-wrap="long">
-            ${state.long.map((sym, i) => boxHtml('long', sym, map, i)).join('')}
+          <div class="wl-grid-mix" data-section-wrap="combined">
+            ${boxHtml('regular', state.regular[0], map, 0)}
+            ${boxHtml('regular', state.regular[1], map, 1)}
+            ${boxHtml('regular', state.regular[2], map, 2)}
+            ${boxHtml('long', state.long[0], map, 0)}
+            ${boxHtml('regular', state.regular[3], map, 3)}
+            ${boxHtml('regular', state.regular[4], map, 4)}
+            ${boxHtml('regular', state.regular[5], map, 5)}
+            ${boxHtml('long', state.long[1], map, 1)}
           </div>
         </div>
       </div>`;

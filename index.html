@@ -88,7 +88,7 @@
         <span class="status-dot" id="statusDot"></span>
         <span id="statusLabel">NEPSE</span>
         <span id="statusTime" class="mono">--:--:--</span>
-        <button class="privacy-eye-btn" id="privacyToggleBtn" title="Hide / show portfolio values" aria-label="Toggle value privacy">👁 Visible</button>
+        <button class="privacy-eye-btn" id="privacyToggleBtn" title="Hide / show portfolio values" aria-label="Toggle value privacy">VISIBLE</button>
         <button class="privacy-eye-btn rs-prefix-btn" id="rsToggleBtn" title="Show / hide Rs prefix" aria-label="Toggle Rs prefix">₹ Prefix</button>
       </div>
 
@@ -96,19 +96,18 @@
         <span class="header-cash-lbl">CASH BALANCE</span>
         <span class="header-cash-val mono" id="headerCash">Rs 0</span>
       </div>
-      <button class="tb-btn tb-btn-ghost tb-btn-icon" id="calcPopupBtn" title="Open floating calculator" aria-label="Open floating calculator">🧮</button>
-      <button class="tb-btn tb-btn-ghost" id="updateLtpBtn" title="Update LTP prices from CSV">
+      <button class="tb-btn tb-btn-ghost tb-btn-icon" id="calcPopupBtn" title="Open floating calculator" aria-label="Open floating calculator">
+        <svg viewBox="0 0 16 16" width="12" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="1.5" width="12" height="13" rx="2"/><rect x="4.5" y="3.5" width="7" height="2.5" rx=".6" fill="currentColor" opacity=".35"/><circle cx="5.5" cy="9" r=".8" fill="currentColor"/><circle cx="8" cy="9" r=".8" fill="currentColor"/><circle cx="10.5" cy="9" r=".8" fill="currentColor"/><circle cx="5.5" cy="11.8" r=".8" fill="currentColor"/><circle cx="8" cy="11.8" r=".8" fill="currentColor"/><circle cx="10.5" cy="11.8" r=".8" fill="currentColor"/></svg>
+      </button>
+      <button class="tb-btn tb-btn-ghost tb-btn-icon" id="updateLtpBtn" title="Update LTP prices from CSV" aria-label="Update LTP prices from CSV">
         <svg viewBox="0 0 14 14" width="11"><path d="M12 1.4A6 6 0 1 0 13.2 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><polyline points="10,0 13.2,0 13.2,3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        UPDATE LTP
       </button>
       <input type="file" id="ltpFileInput" accept=".csv" style="display:none" />
-      <button class="tb-btn tb-btn-ghost tb-btn-stack" id="downloadDataBtn" title="Download backup JSON">
+      <button class="tb-btn tb-btn-ghost tb-btn-icon" id="downloadDataBtn" title="Download backup JSON" aria-label="Export backup">
         <svg viewBox="0 0 14 14" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v8M4 6l3 3 3-3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
-        <span>EXPORT</span>
       </button>
-      <button class="tb-btn tb-btn-ghost tb-btn-stack" id="uploadDataBtn" title="Restore from backup JSON">
+      <button class="tb-btn tb-btn-ghost tb-btn-icon" id="uploadDataBtn" title="Restore from backup JSON" aria-label="Import backup">
         <svg viewBox="0 0 14 14" width="13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 9V1M4 4l3-3 3 3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
-        <span>IMPORT</span>
       </button>
       <input type="file" id="dataFileInput" accept=".json" style="display:none" />
       <button class="user-chip" id="userProfileBtn" title="User profile" aria-label="User profile">
