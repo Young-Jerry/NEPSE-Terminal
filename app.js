@@ -420,7 +420,7 @@
   function updateHeaderTargetProgress() {
     if (!headerTargetValue || !headerTargetFill) return;
     const totals = window.Analytics ? window.Analytics.getPortfolioTotals() : { total: 0 };
-    const targetWorth = 150000000;
+    const targetWorth = 15000000;
     const cash = window.PmsCapital ? window.PmsCapital.readCash() : 0;
     const currentWorth = Number(totals.total || 0) + Math.max(0, Number(cash || 0));
     const completion = Math.max(0, Math.min(100, (currentWorth / targetWorth) * 100));
