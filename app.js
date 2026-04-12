@@ -37,7 +37,6 @@
   const uploadDataBtn    = document.getElementById('uploadDataBtn');
   const dataFileInput    = document.getElementById('dataFileInput');
   const ltpStatus        = document.getElementById('ltpStatus');
-  const userProfileBtn   = document.getElementById('userProfileBtn');
   const privacyToggleBtn = document.getElementById('privacyToggleBtn');
   const rsToggleBtn      = document.getElementById('rsToggleBtn');
   const calcPopupBtn     = document.getElementById('calcPopupBtn');
@@ -435,21 +434,6 @@
   updateCashDisplay();
   updateHeaderTargetProgress();
 
-  if (userProfileBtn) userProfileBtn.addEventListener('click', () => {
-    const totals = window.Analytics ? window.Analytics.getPortfolioTotals() : { total: 0 };
-    const netWorth = Number(totals.total || 0);
-    const exited = readJsonArr('exitedTradesV2');
-    const invested = exited.reduce((s, r) => s + Number(r.buyTotal || 0), 0);
-    const profit = exited.reduce((s, r) => s + Number(r.profit || 0), 0);
-    const roi = invested > 0 ? (profit / invested) * 100 : 0;
-    Modal.open({
-      title: 'Profile Snapshot',
-      subtitle: 'Account overview',
-      body: `<div style="display:grid;gap:10px;font-family:var(--font-mono);font-size:12px;"><div>Name: <strong>Sohaum Mainali</strong></div><div>ROI: <strong class="${roi >= 0 ? 'value-profit' : 'value-loss'}">${pct(roi, 2)}</strong></div><div>Net Worth: <strong>${currencyInt(netWorth)}</strong></div></div>`,
-      footer: '<button class="btn-secondary" onclick="Modal.close()">Close</button>',
-    });
-  });
-
   if (window.PmsProfitBook) window.PmsProfitBook.syncWithLedger();
 
   // ── ALERT SYSTEM ──────────────────────────────────────────────────
@@ -487,17 +471,24 @@
   });
 
   // ── DOWNLOAD / UPLOAD ─────────────────────────────────────────────
-  downloadDataBtn.addEventListener('click', () => {
+  downloadDataBtn.addEventListener('click', async () => {
     try {
-      const snap = window.PmsBackup.createPortfolioSnapshot();
-      const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
+      const password = prompt('Create backup password');
+      if (!password) return;
+      const confirmPassword = prompt('Confirm backup password');
+      if (password !== confirmPassword) {
+        showAlert('Passwords do not match.', false);
+        return;
+      }
+      const csvData = await window.PmsBackup.createEncryptedBackupCSV(password);
+      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href = url;
-      a.download = `NEPSE-Backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `NEPSE-Backup-${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
-      showAlert('Backup exported.', true);
+      showAlert('Encrypted CSV backup exported.', true);
     } catch { showAlert('Export failed.', false); }
   });
 
@@ -506,9 +497,10 @@
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     try {
-      const text    = await file.text();
-      const payload = JSON.parse(text);
-      window.PmsBackup.restorePortfolioSnapshot(payload);
+      const password = prompt('Enter backup password');
+      if (!password) return;
+      const text = await file.text();
+      await window.PmsBackup.restoreEncryptedBackupCSV(text, password);
       showAlert('Data restored. Reloading…', true);
       setTimeout(() => location.reload(), 600);
     } catch { showAlert('Invalid backup file.', false); }

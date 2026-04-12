@@ -1,37 +1,37 @@
 /* ─── NEPSE TERMINAL v4 — Dense Trading Terminal CSS ──────────────── */
 
 :root {
-  --bg-base:        #0a0b0d;
-  --bg-surface:     #0f1013;
-  --bg-card:        #13151a;
-  --bg-elevated:    #1a1d24;
-  --bg-input:       #0f1013;
-  --bg-hover:       #1e2229;
+  --bg-base:        #edf3fb;
+  --bg-surface:     #f5f8ff;
+  --bg-card:        #ffffff;
+  --bg-elevated:    #eef3ff;
+  --bg-input:       #f9fbff;
+  --bg-hover:       #e9f1ff;
 
-  --border:         #1f2330;
-  --border-bright:  #2a2f3d;
-  --border-focus:   #3a4055;
+  --border:         #d7e2f3;
+  --border-bright:  #c8d5ea;
+  --border-focus:   #b2c4e2;
 
-  --text-primary:   #e8eaf2;
-  --text-secondary: #b6bdd3;
-  --text-muted:     #7b839f;
-  --text-dim:       #2e3348;
+  --text-primary:   #1f2b45;
+  --text-secondary: #445576;
+  --text-muted:     #67789b;
+  --text-dim:       #8d9dbc;
 
-  --green:          #7CFF9E;
-  --green-dim:      rgba(0,230,118,.12);
-  --green-mid:      #52e07a;
-  --red:            #ff1744;
-  --red-dim:        rgba(255,23,68,.12);
-  --red-mid:        #e53935;
+  --green:          #7bc9a6;
+  --green-dim:      rgba(123,201,166,.2);
+  --green-mid:      #5bb890;
+  --red:            #de7a8f;
+  --red-dim:        rgba(222,122,143,.16);
+  --red-mid:        #cb617a;
 
-  --blue:           #448aff;
-  --blue-dim:       rgba(68,138,255,.1);
-  --amber:          #ffab00;
-  --amber-dim:      rgba(255,171,0,.1);
-  --purple:         #d500f9;
-  --purple-dim:     rgba(213,0,249,.1);
-  --cyan:           #00e5ff;
-  --cyan-dim:       rgba(0,229,255,.08);
+  --blue:           #83b9f4;
+  --blue-dim:       rgba(131,185,244,.2);
+  --amber:          #f4cd73;
+  --amber-dim:      rgba(244,205,115,.2);
+  --purple:         #bba2ec;
+  --purple-dim:     rgba(187,162,236,.2);
+  --cyan:           #84d8e6;
+  --cyan-dim:       rgba(132,216,230,.22);
 
   --font-mono:      'JetBrains Mono', 'Fira Code', monospace;
   --font-sans:      'IBM Plex Sans', system-ui, sans-serif;

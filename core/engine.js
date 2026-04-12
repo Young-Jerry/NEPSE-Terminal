@@ -459,7 +459,97 @@ function restorePortfolioSnapshot(payload) {
   });
 }
 
-window.PmsBackup = { createPortfolioSnapshot, restorePortfolioSnapshot };
+function bytesToBase64(bytes) {
+  let binary = '';
+  bytes.forEach((b) => { binary += String.fromCharCode(b); });
+  return btoa(binary);
+}
+
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function deriveBackupKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 180000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function createEncryptedBackupCSV(password) {
+  const snap = createPortfolioSnapshot();
+  const payload = JSON.stringify(snap);
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveBackupKey(password, salt);
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(payload));
+  const cipherBase64 = bytesToBase64(new Uint8Array(encrypted));
+  const chunks = cipherBase64.match(/.{1,28}/g) || [];
+  const rows = [
+    ['meta', 'NEPSE-CHAOS-V1', new Date().toISOString(), bytesToBase64(salt), bytesToBase64(iv), String(chunks.length)].join(','),
+  ];
+  chunks.forEach((chunk, index) => {
+    const reverse = chunk.split('').reverse().join('');
+    const noiseA = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const noiseB = Math.random().toString(36).slice(2, 8);
+    rows.push([`r${index}`, noiseA, reverse, noiseB, `z${index % 7}`].join(','));
+  });
+  rows.push(['end', 'ok', Math.random().toString(36).slice(2, 12)].join(','));
+  return rows.join('\n');
+}
+
+async function restoreEncryptedBackupCSV(csvText, password) {
+  const lines = String(csvText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (!lines.length) throw new Error('Empty backup file');
+  const meta = lines[0].split(',');
+  if (meta.length < 6 || meta[0] !== 'meta' || meta[1] !== 'NEPSE-CHAOS-V1') {
+    throw new Error('Unsupported backup format');
+  }
+  const salt = base64ToBytes(meta[3]);
+  const iv = base64ToBytes(meta[4]);
+  const expectedChunks = Number(meta[5]);
+  const chunkRows = lines.slice(1).filter(line => /^r\d+,/.test(line));
+  if (!Number.isFinite(expectedChunks) || expectedChunks < 1 || chunkRows.length < expectedChunks) {
+    throw new Error('Backup data is incomplete');
+  }
+  const ordered = chunkRows
+    .map((line) => {
+      const parts = line.split(',');
+      return { idx: Number(String(parts[0]).slice(1)), chunk: parts[2] || '' };
+    })
+    .filter(row => Number.isFinite(row.idx))
+    .sort((a, b) => a.idx - b.idx)
+    .slice(0, expectedChunks)
+    .map(row => row.chunk.split('').reverse().join(''));
+  const cipherBase64 = ordered.join('');
+  const key = await deriveBackupKey(password, salt);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, base64ToBytes(cipherBase64));
+  const dec = new TextDecoder();
+  const payload = JSON.parse(dec.decode(decrypted));
+  restorePortfolioSnapshot(payload);
+}
+
+window.PmsBackup = {
+  createPortfolioSnapshot,
+  restorePortfolioSnapshot,
+  createEncryptedBackupCSV,
+  restoreEncryptedBackupCSV,
+};
 
 // ─── MARKET TIMER ─────────────────────────────────────────────────────────
 function startMarketClock(onTick) {

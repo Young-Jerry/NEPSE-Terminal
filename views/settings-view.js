@@ -60,18 +60,18 @@ function renderSettings(container) {
       <div class="settings-row">
         <div>
           <div class="settings-row-label">Export Data</div>
-          <div class="settings-row-sub">Download a full JSON backup of all portfolio data.</div>
+          <div class="settings-row-sub">Download an encrypted CSV backup of all portfolio data.</div>
         </div>
         <button class="btn-primary" id="settings-backup-btn">Download Backup</button>
       </div>
       <div class="settings-row">
         <div>
           <div class="settings-row-label">Import Data</div>
-          <div class="settings-row-sub">Restore from a previously exported backup file.</div>
+          <div class="settings-row-sub">Restore from a previously exported encrypted CSV backup.</div>
         </div>
         <label class="btn-secondary" for="settings-restore-input" style="cursor:pointer;">
           Upload Backup
-          <input type="file" id="settings-restore-input" accept=".json" style="display:none;" />
+          <input type="file" id="settings-restore-input" accept=".csv" style="display:none;" />
         </label>
       </div>
       <div id="settings-backup-status" style="font-size:12px;color:var(--green);margin-top:8px;display:none;"></div>
@@ -170,24 +170,36 @@ function renderSettings(container) {
   window.addEventListener('pms-cash-updated', updateCashDisplay);
 
   // Backup
-  container.querySelector('#settings-backup-btn').addEventListener('click', () => {
-    const snap = window.PmsBackup.createPortfolioSnapshot();
-    const blob = new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `NEPSE-Backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    showStatus('Backup downloaded ✓');
+  container.querySelector('#settings-backup-btn').addEventListener('click', async () => {
+    try {
+      const password = prompt('Create backup password');
+      if (!password) return;
+      const confirmPassword = prompt('Confirm backup password');
+      if (password !== confirmPassword) {
+        showStatus('Passwords do not match.');
+        return;
+      }
+      const csvData = await window.PmsBackup.createEncryptedBackupCSV(password);
+      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = `NEPSE-Backup-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      showStatus('Encrypted CSV backup downloaded ✓');
+    } catch {
+      showStatus('Backup export failed.');
+    }
   });
 
   container.querySelector('#settings-restore-input').addEventListener('change', async e => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     try {
+      const password = prompt('Enter backup password');
+      if (!password) return;
       const text = await file.text();
-      const payload = JSON.parse(text);
-      window.PmsBackup.restorePortfolioSnapshot(payload);
+      await window.PmsBackup.restoreEncryptedBackupCSV(text, password);
       showStatus('Data restored ✓ Reloading…');
       setTimeout(() => location.reload(), 700);
     } catch { showStatus('Invalid backup file.'); }
