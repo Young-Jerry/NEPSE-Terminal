@@ -208,9 +208,23 @@ function renderSettings(container) {
   // Backup
   container.querySelector('#settings-backup-btn').addEventListener('click', async () => {
     try {
-      const password = prompt('Create backup password');
+      const password = await Modal.prompt({
+        title: 'Export Encrypted CSV',
+        subtitle: 'Create a backup password',
+        label: 'Password',
+        inputType: 'password',
+        placeholder: 'Enter password',
+        confirmText: 'Continue',
+      });
       if (!password) return;
-      const confirmPassword = prompt('Confirm backup password');
+      const confirmPassword = await Modal.prompt({
+        title: 'Confirm Password',
+        subtitle: 'Re-enter backup password',
+        label: 'Confirm password',
+        inputType: 'password',
+        placeholder: 'Enter password again',
+        confirmText: 'Export',
+      });
       if (password !== confirmPassword) {
         showStatus('Passwords do not match.');
         return;
@@ -232,7 +246,14 @@ function renderSettings(container) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     try {
-      const password = prompt('Enter backup password');
+      const password = await Modal.prompt({
+        title: 'Import Encrypted CSV',
+        subtitle: 'Enter backup password',
+        label: 'Password',
+        inputType: 'password',
+        placeholder: 'Enter password',
+        confirmText: 'Import',
+      });
       if (!password) return;
       const text = await file.text();
       await window.PmsBackup.restoreEncryptedBackupCSV(text, password);

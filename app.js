@@ -39,6 +39,7 @@
   const ltpStatus        = document.getElementById('ltpStatus');
   const privacyToggleBtn = document.getElementById('privacyToggleBtn');
   const rsToggleBtn      = document.getElementById('rsToggleBtn');
+  const themeToggleBtn   = document.getElementById('themeToggleBtn');
   const calcPopupBtn     = document.getElementById('calcPopupBtn');
   const calcFloat        = document.getElementById('calcFloat');
 
@@ -58,9 +59,11 @@
   // ── PRIVACY MODE ────────────────────────────────────────────────
   const PRIVACY_KEY = 'pms_privacy_mode_v1';
   const RS_PREFIX_KEY = 'pms_show_rs_prefix_v1';
+  const THEME_KEY = 'pms_theme_v1';
   const SIP_DUE_DAY_KEY = 'pms_sip_due_day_v1';
   let privacyEnabled = localStorage.getItem(PRIVACY_KEY) === '1';
   let rsPrefixEnabled = localStorage.getItem(RS_PREFIX_KEY) !== '0';
+  let currentTheme = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
 
   function maskDigits(text) {
     return String(text || '').replace(/\d/g, 'X');
@@ -83,7 +86,7 @@
       const text = (node.nodeValue || '').trim();
       if (!text) continue;
       if (enabled) {
-        const shouldMask = /\d/.test(text) || /^(SSIS|KSLY|SCRIPT|QTY|LTP|STOPLOSS|L\.TARGET|TOTAL UNITS)$/i.test(text);
+        const shouldMask = /\d/.test(text) || /^(SCRIPT|QTY|LTP|STOPLOSS|L\.TARGET|TOTAL UNITS)$/i.test(text);
         if (!shouldMask) continue;
         if (!parent.dataset.privateOriginal) parent.dataset.privateOriginal = node.nodeValue;
         node.nodeValue = 'XXX';
@@ -185,6 +188,19 @@
 
   if (privacyToggleBtn) privacyToggleBtn.addEventListener('click', () => setPrivacyMode(!privacyEnabled));
   if (rsToggleBtn) rsToggleBtn.addEventListener('click', () => setRsPrefixMode(!rsPrefixEnabled));
+
+  function applyTheme(theme) {
+    currentTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    localStorage.setItem(THEME_KEY, currentTheme);
+    if (themeToggleBtn) {
+      themeToggleBtn.textContent = currentTheme === 'dark' ? '☀' : '☾';
+      themeToggleBtn.title = currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+      themeToggleBtn.setAttribute('aria-label', themeToggleBtn.title);
+    }
+  }
+  if (themeToggleBtn) themeToggleBtn.addEventListener('click', () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark'));
+  applyTheme(currentTheme);
 
   // ── FLOATING CALCULATOR ─────────────────────────────────────────
   const QUICK_CALC_HISTORY_KEY = 'pms_quick_calc_history_v1';
@@ -365,6 +381,7 @@
   function openCalcFloat() {
     if (!calcFloat) return;
     if (!calcFloat.innerHTML.trim()) mountQuickCalculator();
+    syncQuickCalcHeight();
     calcFloat.classList.remove('hidden');
   }
   function closeCalcFloat() {
@@ -373,6 +390,16 @@
     calcFloat.innerHTML = '';
   }
   if (calcPopupBtn) calcPopupBtn.addEventListener('click', openCalcFloat);
+
+  function syncQuickCalcHeight() {
+    if (!calcFloat) return;
+    const txCard = document.querySelector('#view-calculator .calc-transaction-card');
+    const fallbackHeight = 430;
+    const headerHeight = 42;
+    const bodyHeight = txCard ? Math.round(txCard.getBoundingClientRect().height) : fallbackHeight;
+    calcFloat.style.width = '336px';
+    calcFloat.style.height = `${Math.max(280, bodyHeight + headerHeight)}px`;
+  }
 
   // ── ROUTER ────────────────────────────────────────────────────────
   let currentView = null;
@@ -491,9 +518,23 @@
   // ── DOWNLOAD / UPLOAD ─────────────────────────────────────────────
   downloadDataBtn.addEventListener('click', async () => {
     try {
-      const password = prompt('Create backup password');
+      const password = await Modal.prompt({
+        title: 'Export Encrypted CSV',
+        subtitle: 'Create a backup password',
+        label: 'Password',
+        inputType: 'password',
+        placeholder: 'Enter password',
+        confirmText: 'Continue',
+      });
       if (!password) return;
-      const confirmPassword = prompt('Confirm backup password');
+      const confirmPassword = await Modal.prompt({
+        title: 'Confirm Password',
+        subtitle: 'Re-enter backup password',
+        label: 'Confirm password',
+        inputType: 'password',
+        placeholder: 'Enter password again',
+        confirmText: 'Export',
+      });
       if (password !== confirmPassword) {
         showAlert('Passwords do not match.', false);
         return;
@@ -515,7 +556,14 @@
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     try {
-      const password = prompt('Enter backup password');
+      const password = await Modal.prompt({
+        title: 'Import Encrypted CSV',
+        subtitle: 'Enter backup password',
+        label: 'Password',
+        inputType: 'password',
+        placeholder: 'Enter password',
+        confirmText: 'Import',
+      });
       if (!password) return;
       const text = await file.text();
       await window.PmsBackup.restoreEncryptedBackupCSV(text, password);

@@ -13,7 +13,7 @@ function renderCalculator(container) {
 
     <div class="dashboard-row" style="grid-template-columns:1fr 1.2fr;">
       <!-- Input Panel -->
-      <div class="card">
+      <div class="card calc-transaction-card">
         <div class="card-title mb16">Transaction Details</div>
         <div class="form-grid" style="grid-template-columns:1fr;">
           <div class="form-group">

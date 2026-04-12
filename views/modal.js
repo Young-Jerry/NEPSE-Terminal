@@ -57,13 +57,70 @@ const Modal = (() => {
     });
   }
 
+  function prompt({
+    title,
+    subtitle = '',
+    label = 'Value',
+    placeholder = '',
+    confirmText = 'Submit',
+    inputType = 'text',
+    onSubmit,
+  }) {
+    let resolved = false;
+    const finish = (value, shouldClose = true) => {
+      if (resolved) return;
+      resolved = true;
+      if (shouldClose) close();
+      resolver(value);
+    };
+    let resolver = () => {};
+    open({
+      title,
+      subtitle,
+      onClose: () => finish(null, false),
+      body: `
+        <div class="form-group">
+          <label class="form-label">${escHtml(label)}</label>
+          <input class="form-input" id="modalPromptInput" type="${escHtml(inputType)}" placeholder="${escHtml(placeholder)}" />
+        </div>
+      `,
+      footer: `
+        <button class="btn-secondary" id="modalPromptCancel">Cancel</button>
+        <button class="btn-primary" id="modalPromptSubmit">${escHtml(confirmText)}</button>
+      `,
+    });
+
+    return new Promise((resolve) => {
+      resolver = resolve;
+      const input = box.querySelector('#modalPromptInput');
+      const cancelBtn = box.querySelector('#modalPromptCancel');
+      const submitBtn = box.querySelector('#modalPromptSubmit');
+      if (cancelBtn) cancelBtn.addEventListener('click', () => finish(null));
+      if (submitBtn) submitBtn.addEventListener('click', () => {
+        const value = input ? String(input.value || '') : '';
+        if (onSubmit) {
+          const out = onSubmit(value);
+          if (out === false) return;
+        }
+        finish(value);
+      });
+      if (input) {
+        input.addEventListener('keydown', (e) => {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          if (submitBtn) submitBtn.click();
+        });
+      }
+    });
+  }
+
   function escHtml(v) {
     return String(v || '')
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
       .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
-  return { open, close, confirm, setBody, escHtml };
+  return { open, close, confirm, prompt, setBody, escHtml };
 })();
 
 window.Modal = Modal;

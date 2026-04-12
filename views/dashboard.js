@@ -66,11 +66,11 @@
 
   function getSipEntryMonths() {
     const sipState = readSipState();
-    const records = sipState.records || {};
-    return {
-      SSIS: Array.isArray(records.SSIS) ? records.SSIS.length : 0,
-      KSLY: Array.isArray(records.KSLY) ? records.KSLY.length : 0,
-    };
+    const sips = Array.isArray(sipState.sips) ? sipState.sips : [];
+    return sips.slice(0, 2).map((name) => {
+      const rows = Array.isArray((sipState.records || {})[name]) ? (sipState.records || {})[name] : [];
+      return { name, months: rows.length };
+    });
   }
 
   function calcSellReceivable(row, kind) {
@@ -128,6 +128,9 @@
     const sipProg = sipDays == null ? 0 : Math.max(0, Math.min(100, ((31 - sipDays) / 31) * 100));
     const sipRoiCards = buildSipRoiCards();
     const sipEntryMonths = getSipEntryMonths();
+    const sipEntryChips = sipEntryMonths.length
+      ? sipEntryMonths.map((entry) => `<div class="sip-meta-chip"><span>${escHtml(entry.name)} ENTRIES</span><strong>${entry.months} Months</strong></div>`).join('')
+      : '<div class="sip-meta-chip"><span>SIP ENTRIES</span><strong>0 Months</strong></div>';
 
     container.innerHTML = `
       <div class="kpi-strip dash-row">
@@ -163,8 +166,7 @@
             <div class="sip-bar"><div class="sip-bar-fill" style="width:${sipProg}%;"></div></div>
           </div>
           <div class="sip-meta-row">
-            <div class="sip-meta-chip"><span>SSIS ENTRIES</span><strong>${sipEntryMonths.SSIS} Months</strong></div>
-            <div class="sip-meta-chip"><span>KSLY ENTRIES</span><strong>${sipEntryMonths.KSLY} Months</strong></div>
+            ${sipEntryChips}
           </div>
           <div class="dash-sip-roi-grid">${sipRoiCards}</div>
         </div>
@@ -224,8 +226,16 @@
 
   function buildSipRoiCards() {
     const sipState = readSipState();
-    const defaultNames = ['SSIS', 'KSLY'];
-    return defaultNames.map(name => {
+    const sipNames = Array.isArray(sipState.sips) ? sipState.sips : [];
+    if (!sipNames.length) {
+      return `
+        <div class="dash-sip-roi-item">
+          <span class="dash-sip-roi-name">No SIP added</span>
+          <span class="dash-sip-roi-val">-</span>
+        </div>
+      `;
+    }
+    return sipNames.map(name => {
       const rows = Array.isArray((sipState.records || {})[name]) ? sipState.records[name] : [];
       const units = rows.reduce((s, r) => s + Math.floor(Number(r.units || 0)), 0);
       const invested = rows.reduce((s, r) => s + (Math.floor(Number(r.units || 0)) * Number(r.nav || 0)), 0);

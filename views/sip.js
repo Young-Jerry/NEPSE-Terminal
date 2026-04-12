@@ -4,8 +4,6 @@
  */
 function renderSip(container) {
   const SIP_KEY = 'sipStateV4';
-  const DEFAULT_SIPS = ['SSIS', 'KSLY'];
-  const FORCED_START = { SSIS: '2025-07', KSLY: '2026-02' };
 
   let state = readState();
   let activeSip = (state.activeSip && (state.activeSip === 'ALL_SIP' || state.sips.includes(state.activeSip)))
@@ -165,7 +163,6 @@ function renderSip(container) {
 
   delBtn.addEventListener('click', () => {
     if (!activeSip || activeSip === 'ALL_SIP') return show('Select a SIP to delete.');
-    if (DEFAULT_SIPS.includes(activeSip)) return show('Default SIPs cannot be deleted.');
     Modal.confirm({
       title: `Delete ${activeSip}`,
       message: `This will refund the invested amount and remove all installment records.`,
@@ -406,8 +403,6 @@ function renderSip(container) {
 
   function minimumMonthForSip(sipName) {
     const reg = (state.registeredAt || {})[sipName];
-    const forced = FORCED_START[sipName];
-    if (forced) return forced;
     if (reg) return reg.slice(0, 7);
     return '2000-01';
   }
@@ -455,15 +450,15 @@ function renderSip(container) {
         if (!legacy) continue;
         if ((key === 'sipStateV3' || key === 'sipStateV2') && Array.isArray(legacy.sips)) return normalizeState(legacy);
         if (key === 'sipData' && Array.isArray(legacy)) {
-          return normalizeState({ sips: [...DEFAULT_SIPS], records: { SSIS: legacy, KSLY: [] }, currentNav: {} });
+          return normalizeState({ sips: ['SIP'], records: { SIP: legacy }, currentNav: {} });
         }
       } catch {}
     }
-    return normalizeState({ sips: [...DEFAULT_SIPS], records: { SSIS: [], KSLY: [] }, currentNav: {} });
+    return normalizeState({ sips: [], records: {}, currentNav: {} });
   }
 
   function normalizeState(input) {
-    const sips = Array.from(new Set([...(input.sips || []), ...DEFAULT_SIPS]));
+    const sips = Array.from(new Set((input.sips || []).map(s => String(s || '').trim().toUpperCase()).filter(Boolean)));
     const records = {}, currentNav = { ...(input.currentNav || {}) };
     const registeredAt = { ...(input.registeredAt || {}) };
     sips.forEach(sip => {
