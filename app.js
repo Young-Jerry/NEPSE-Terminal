@@ -86,7 +86,7 @@
       const text = (node.nodeValue || '').trim();
       if (!text) continue;
       if (enabled) {
-        const shouldMask = /\d/.test(text) || /^(SCRIPT|QTY|LTP|STOPLOSS|L\.TARGET|TOTAL UNITS)$/i.test(text);
+        const shouldMask = /\d/.test(text);
         if (!shouldMask) continue;
         if (!parent.dataset.privateOriginal) parent.dataset.privateOriginal = node.nodeValue;
         node.nodeValue = 'XXX';
