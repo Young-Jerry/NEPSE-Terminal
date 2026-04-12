@@ -307,6 +307,9 @@ body.sidebar-open .main-area { margin-left: var(--sidebar-w); }
   display: flex;
   align-items: center;
 }
+.topbar-tools {
+  padding: 2px 4px;
+}
 .topbar-profile { padding: 2px; }
 .user-chip{display:flex;align-items:center;justify-content:center;background:var(--bg-elevated);border:1px solid var(--border-bright);color:var(--text-secondary);padding:2px;border-radius:999px;cursor:pointer;font-family:var(--font-mono);font-size:10px;width:40px;height:40px;}
 .user-chip:hover{border-color:var(--border-focus);color:var(--text-primary);}
@@ -1761,13 +1764,13 @@ tbody tr:hover {
 .tb-btn-icon:hover svg { opacity: 1; }
 .topbar-quick-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
 }
 .tb-btn-symbol {
   min-width: 0;
-  width: 24px;
-  height: 20px;
+  width: 22px;
+  height: 18px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -1775,6 +1778,21 @@ tbody tr:hover {
 }
 .tb-btn-mark { display: inline-flex; align-items: center; gap: 4px; }
 .tb-mark { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); }
+.csv-btn {
+  opacity: 0.85;
+}
+.csv-btn:hover {
+  opacity: 1;
+}
+.theme-user-chip {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+  background: var(--bg-elevated);
+}
 .tb-btn-stack {
   flex-direction: column;
   justify-content: center;
