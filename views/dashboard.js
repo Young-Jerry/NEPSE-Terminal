@@ -64,6 +64,15 @@
     return trades.slice(-3).reverse();
   }
 
+  function getSipEntryMonths() {
+    const sipState = readSipState();
+    const records = sipState.records || {};
+    return {
+      SSIS: Array.isArray(records.SSIS) ? records.SSIS.length : 0,
+      KSLY: Array.isArray(records.KSLY) ? records.KSLY.length : 0,
+    };
+  }
+
   function calcSellReceivable(row, kind) {
     const holdingDays = kind === 'long' ? 366 : 0;
     const calc = window.PmsTradeMath
@@ -118,15 +127,16 @@
     const sipDays = daysUntil15th();
     const sipProg = Math.max(0, Math.min(100, ((30 - sipDays) / 30) * 100));
     const sipRoiCards = buildSipRoiCards();
+    const sipEntryMonths = getSipEntryMonths();
     const targetWorth = 150000000;
     const currentWorth = Number(totals.total || 0) + Math.max(0, cash);
     const completion = Math.max(0, Math.min(100, (currentWorth / targetWorth) * 100));
-    const diffFromTarget = currentWorth - targetWorth;
+    const remainingToTarget = Math.max(0, targetWorth - currentWorth);
 
     container.innerHTML = `
       <div class="kpi-strip dash-row">
         <div class="kpi-card kpi-roi" id="dash-kpi-roi">
-          <div class="kpi-label">ROI</div>
+          <div class="kpi-label">EXITED TRADES ROI</div>
           <div class="kpi-value ${plCls(realized.roi)}">${plSign(realized.roi)}${fmtPct(realized.roi, 2)}</div>
         </div>
 
@@ -143,17 +153,14 @@
         <div class="kpi-card kpi-cash" id="dash-kpi-cash">
           <div class="kpi-label">CASH BALANCE</div>
           <div class="kpi-value cash-color mono">${fmtRs(Math.abs(cash), 0)}</div>
+          <div class="kpi-target-progress" title="Remaining to target: ${fmtRs(remainingToTarget, 0)}">
+            <strong>${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : `${completion.toFixed(2)}%`}</strong>
+            <div class="target-progress-track">
+              <div class="target-progress-fill" style="width:${completion.toFixed(2)}%;"></div>
+            </div>
+          </div>
         </div>
 
-      </div>
-      <div class="target-progress-card dash-row" title="${fmtRs(diffFromTarget, 0)} vs target">
-        <div class="target-progress-head">
-          <span>TARGET 15 CRORE</span>
-          <strong>${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : `${completion.toFixed(2)}%`}</strong>
-        </div>
-        <div class="target-progress-track">
-          <div class="target-progress-fill" style="width:${completion.toFixed(2)}%;"></div>
-        </div>
       </div>
 
       <div class="info-strip dash-row">
@@ -166,8 +173,8 @@
             <div class="sip-bar"><div class="sip-bar-fill" style="width:${sipProg}%;"></div></div>
           </div>
           <div class="sip-meta-row">
-            <div class="sip-meta-chip"><span>Target Date</span><strong>15 ${new Date().toLocaleString('en-US', { month: 'short' })}</strong></div>
-            <div class="sip-meta-chip"><span>Coverage</span><strong>${sipProg.toFixed(0)}%</strong></div>
+            <div class="sip-meta-chip"><span>SSIS ENTRIES</span><strong>${sipEntryMonths.SSIS} Months</strong></div>
+            <div class="sip-meta-chip"><span>KSLY ENTRIES</span><strong>${sipEntryMonths.KSLY} Months</strong></div>
           </div>
           <div class="dash-sip-roi-grid">${sipRoiCards}</div>
         </div>
@@ -190,7 +197,7 @@
                   <span><label>LTP</label><strong>${fmtRs(row.ltp, 2)}</strong></span>
                   <span><label>INVESTED</label><strong title="WACC: ${fmtRs(row.wacc, 2)}">${fmtRs(invested, 0)}</strong></span>
                   <span><label>SELL</label><strong class="${sell >= invested ? 'profit' : 'loss'}">${fmtRs(sell, 0)}</strong></span>
-                  <span><label>P/L</label><strong class="${plAfterTax >= 0 ? 'profit' : 'loss'}">${plSign(plAfterTax)}${fmtRs(plAfterTax, 0)}</strong></span>
+                  <span><label>P/L</label><strong class="profit">${plSign(plAfterTax)}${fmtRs(plAfterTax, 0)}</strong></span>
                   <span><label>P/L SHARE</label><strong class="${plPerShare >= 0 ? 'profit' : 'loss'}">${plSign(plPerShare)}${fmtRs(plPerShare, 2)}</strong></span>
                 </div>
               </div>`;
