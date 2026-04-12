@@ -83,39 +83,52 @@
       <h1 class="page-title" id="pageTitle">Dashboard</h1>
     </div>
     <div class="topbar-right">
-
-      <div class="market-pill topbar-market" id="marketPill">
-        <span class="status-dot" id="statusDot"></span>
-        <span id="statusLabel">NEPSE</span>
-        <span id="statusTime" class="mono">--:--:--</span>
-        <button class="privacy-eye-btn" id="privacyToggleBtn" title="Hide / show portfolio values" aria-label="Toggle value privacy">VISIBLE</button>
-        <button class="privacy-eye-btn rs-prefix-btn" id="rsToggleBtn" title="Show / hide Rs prefix" aria-label="Toggle Rs prefix">₹ Prefix</button>
+      <div class="topbar-segment">
+        <div class="market-pill topbar-market" id="marketPill">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusLabel">NEPSE</span>
+          <span id="statusTime" class="mono">--:--:--</span>
+          <button class="privacy-eye-btn" id="privacyToggleBtn" title="Hide / show portfolio values" aria-label="Toggle value privacy">VISIBLE</button>
+          <button class="privacy-eye-btn rs-prefix-btn" id="rsToggleBtn" title="Show / hide Rs prefix" aria-label="Toggle Rs prefix">₹ Prefix</button>
+        </div>
       </div>
 
-      <div class="header-cash-box" title="Cash balance">
+      <div class="topbar-segment header-target-box" title="Goal progress to 15 crore">
+        <span class="header-target-lbl">15 CRORE GOAL</span>
+        <span class="header-target-val mono" id="headerTargetValue">0%</span>
+        <div class="header-target-track"><div class="header-target-fill" id="headerTargetFill"></div></div>
+      </div>
+
+      <div class="topbar-segment header-cash-box" title="Cash balance">
         <span class="header-cash-lbl">CASH BALANCE</span>
         <span class="header-cash-val mono" id="headerCash">Rs 0</span>
       </div>
-      <div class="topbar-quick-grid">
-        <button class="tb-btn tb-btn-ghost tb-btn-icon tb-btn-symbol" id="calcPopupBtn" title="Open floating calculator" aria-label="Open floating calculator">
-          <svg viewBox="0 0 16 16" width="10" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="1.5" width="12" height="13" rx="2"/><rect x="4.5" y="3.5" width="7" height="2.5" rx=".6" fill="currentColor" opacity=".35"/><circle cx="5.5" cy="9" r=".8" fill="currentColor"/><circle cx="8" cy="9" r=".8" fill="currentColor"/><circle cx="10.5" cy="9" r=".8" fill="currentColor"/><circle cx="5.5" cy="11.8" r=".8" fill="currentColor"/><circle cx="8" cy="11.8" r=".8" fill="currentColor"/><circle cx="10.5" cy="11.8" r=".8" fill="currentColor"/></svg>
-        </button>
-        <button class="tb-btn tb-btn-ghost tb-btn-icon tb-btn-symbol" id="downloadDataBtn" title="Download backup JSON" aria-label="Export backup">
-          <svg viewBox="0 0 14 14" width="11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v8M4 6l3 3 3-3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
-        </button>
-        <button class="tb-btn tb-btn-ghost tb-btn-icon tb-btn-symbol" id="updateLtpBtn" title="Update LTP prices from CSV" aria-label="Update LTP prices from CSV">
-          <svg viewBox="0 0 14 14" width="9"><path d="M12 1.4A6 6 0 1 0 13.2 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><polyline points="10,0 13.2,0 13.2,3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        </button>
-        <button class="tb-btn tb-btn-ghost tb-btn-icon tb-btn-symbol" id="uploadDataBtn" title="Restore from backup JSON" aria-label="Import backup">
-          <svg viewBox="0 0 14 14" width="11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 9V1M4 4l3-3 3 3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
+
+      <div class="topbar-segment topbar-tools">
+        <div class="topbar-quick-grid">
+          <button class="tb-btn tb-btn-ghost tb-btn-icon tb-btn-symbol" id="calcPopupBtn" title="Open floating calculator" aria-label="Open floating calculator">
+            <svg viewBox="0 0 16 16" width="10" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="1.5" width="12" height="13" rx="2"/><rect x="4.5" y="3.5" width="7" height="2.5" rx=".6" fill="currentColor" opacity=".35"/><circle cx="5.5" cy="9" r=".8" fill="currentColor"/><circle cx="8" cy="9" r=".8" fill="currentColor"/><circle cx="10.5" cy="9" r=".8" fill="currentColor"/><circle cx="5.5" cy="11.8" r=".8" fill="currentColor"/><circle cx="8" cy="11.8" r=".8" fill="currentColor"/><circle cx="10.5" cy="11.8" r=".8" fill="currentColor"/></svg>
+          </button>
+          <button class="tb-btn tb-btn-ghost tb-btn-icon tb-btn-symbol" id="downloadDataBtn" title="Download backup JSON" aria-label="Export backup">
+            <svg viewBox="0 0 14 14" width="11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 1v8M4 6l3 3 3-3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
+          </button>
+          <button class="tb-btn tb-btn-ghost tb-btn-icon tb-btn-symbol" id="updateLtpBtn" title="Update LTP prices from CSV" aria-label="Update LTP prices from CSV">
+            <svg viewBox="0 0 14 14" width="9"><path d="M12 1.4A6 6 0 1 0 13.2 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><polyline points="10,0 13.2,0 13.2,3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+          <button class="tb-btn tb-btn-ghost tb-btn-icon tb-btn-symbol" id="uploadDataBtn" title="Restore from backup JSON" aria-label="Import backup">
+            <svg viewBox="0 0 14 14" width="11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 9V1M4 4l3-3 3 3" stroke-linecap="round"/><path d="M2 11h10" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="topbar-segment topbar-profile">
+        <button class="user-chip" id="userProfileBtn" title="User profile" aria-label="User profile">
+          <img class="user-avatar" alt="User profile" src="assets/user-sohaum-mainali.jpg" />
         </button>
       </div>
+      <span class="ltp-status mono" id="ltpStatus"></span>
       <input type="file" id="ltpFileInput" accept=".csv" style="display:none" />
       <input type="file" id="dataFileInput" accept=".json" style="display:none" />
-      <button class="user-chip" id="userProfileBtn" title="User profile" aria-label="User profile">
-        <img class="user-avatar" alt="User profile" src="assets/user-sohaum-mainali.jpg" />
-      </button>
-      <span class="ltp-status mono" id="ltpStatus"></span>
     </div>
   </header>
 

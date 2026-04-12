@@ -26,6 +26,8 @@
   const statusLabel      = document.getElementById('statusLabel');
   const statusTime       = document.getElementById('statusTime');
   const headerCash       = document.getElementById('headerCash');
+  const headerTargetValue = document.getElementById('headerTargetValue');
+  const headerTargetFill = document.getElementById('headerTargetFill');
   const alertBar         = document.getElementById('alertBar');
   const alertText        = document.getElementById('alertText');
   const alertClose       = document.getElementById('alertClose');
@@ -68,6 +70,30 @@
     return 'XXX';
   }
 
+  function maskStaticValues(root, enabled) {
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const parent = node.parentElement;
+      if (!parent) continue;
+      const tag = parent.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT' || tag === 'TEXTAREA') continue;
+      if (parent.closest('input, textarea, [contenteditable="true"]')) continue;
+      const text = (node.nodeValue || '').trim();
+      if (!text) continue;
+      if (enabled) {
+        const shouldMask = /\d/.test(text) || /^(SSIS|KSLY|SCRIPT|QTY|LTP|STOPLOSS|L\.TARGET|TOTAL UNITS)$/i.test(text);
+        if (!shouldMask) continue;
+        if (!parent.dataset.privateOriginal) parent.dataset.privateOriginal = node.nodeValue;
+        node.nodeValue = 'XXX';
+      } else if (parent.dataset.privateOriginal) {
+        node.nodeValue = parent.dataset.privateOriginal;
+        delete parent.dataset.privateOriginal;
+      }
+    }
+  }
+
   function maskInlineInputs(root, enabled) {
     root.querySelectorAll('input.inline-edit, input.ltp-input').forEach((input) => {
       if (enabled) {
@@ -88,7 +114,7 @@
   function applyPrivacyMode() {
     document.body.classList.toggle('privacy-on', privacyEnabled);
     if (privacyToggleBtn) {
-      privacyToggleBtn.textContent = privacyEnabled ? 'HIDE' : 'SHOW';
+      privacyToggleBtn.textContent = privacyEnabled ? 'HIDDEN' : 'VISIBLE';
       privacyToggleBtn.classList.toggle('active', privacyEnabled);
     }
     if (rsToggleBtn) {
@@ -96,6 +122,7 @@
       rsToggleBtn.classList.toggle('active', rsPrefixEnabled);
     }
     maskInlineInputs(document, privacyEnabled);
+    maskStaticValues(document.body, privacyEnabled);
   }
 
   function setPrivacyMode(next) {
@@ -103,11 +130,13 @@
     localStorage.setItem(PRIVACY_KEY, privacyEnabled ? '1' : '0');
     applyPrivacyMode();
     updateCashDisplay();
+    updateHeaderTargetProgress();
     window.dispatchEvent(new CustomEvent('pms-privacy-changed', { detail: { enabled: privacyEnabled } }));
     if (currentView && ROUTES[currentView]) {
       const container = document.getElementById(`view-${currentView}`);
       if (container) ROUTES[currentView].render(container);
     }
+    applyPrivacyMode();
   }
 
   window.PmsPrivacy = {
@@ -127,6 +156,8 @@
       const container = document.getElementById(`view-${currentView}`);
       if (container) ROUTES[currentView].render(container);
     }
+    applyPrivacyMode();
+    updateHeaderTargetProgress();
     window.dispatchEvent(new CustomEvent('pms-rs-prefix-changed', { detail: { enabled: rsPrefixEnabled } }));
   }
 
@@ -351,6 +382,7 @@
       container._dirty = false;
     }
     applyPrivacyMode();
+    updateHeaderTargetProgress();
 
     currentView = viewId;
 
@@ -385,8 +417,23 @@
     }
   }
 
+  function updateHeaderTargetProgress() {
+    if (!headerTargetValue || !headerTargetFill) return;
+    const totals = window.Analytics ? window.Analytics.getPortfolioTotals() : { total: 0 };
+    const targetWorth = 150000000;
+    const cash = window.PmsCapital ? window.PmsCapital.readCash() : 0;
+    const currentWorth = Number(totals.total || 0) + Math.max(0, Number(cash || 0));
+    const completion = Math.max(0, Math.min(100, (currentWorth / targetWorth) * 100));
+    headerTargetValue.textContent = (window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled())
+      ? maskValue()
+      : `${completion.toFixed(2)}%`;
+    headerTargetFill.style.width = `${completion.toFixed(2)}%`;
+  }
+
   window.addEventListener('pms-cash-updated', updateCashDisplay);
+  window.addEventListener('pms-cash-updated', updateHeaderTargetProgress);
   updateCashDisplay();
+  updateHeaderTargetProgress();
 
   if (userProfileBtn) userProfileBtn.addEventListener('click', () => {
     const totals = window.Analytics ? window.Analytics.getPortfolioTotals() : { total: 0 };
@@ -503,6 +550,7 @@
   // ── LTP-updated: only refresh current view if it's dashboard ─────
   window.addEventListener('pms-ltp-updated', () => {
     updateCashDisplay();
+    updateHeaderTargetProgress();
     // Mark non-current views dirty; re-render current immediately
     document.querySelectorAll('.view').forEach(v => { v._dirty = true; });
     renderedViews.clear();
@@ -513,6 +561,7 @@
         renderedViews.add(currentView);
         container._dirty = false;
         applyPrivacyMode();
+        updateHeaderTargetProgress();
       }
     }
   });

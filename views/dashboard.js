@@ -59,11 +59,6 @@
     return { roi, totalProfit, totalInvested, count: exited.length };
   }
 
-  function getLatestTrades() {
-    const trades = readArr('trades').map(r => ({ ...r, _type: 'TRADES' }));
-    return trades.slice(-3).reverse();
-  }
-
   function getSipEntryMonths() {
     const sipState = readSipState();
     const records = sipState.records || {};
@@ -115,7 +110,6 @@
     const totals = window.Analytics ? window.Analytics.getPortfolioTotals() : { total: 0, trades: { pl: 0, invested: 0, value: 0 }, longterm: { pl: 0, invested: 0, value: 0 }, sip: { pl: 0 } };
     const cash = window.PmsCapital ? window.PmsCapital.readCash() : 0;
     const realized = getRealizedRoi();
-    const latestRows = getLatestTrades();
     const longTermGain = Math.abs(Number(totals.longterm.value || 0) - Number(totals.longterm.invested || 0));
     const tradeSort = container._tradeSort || { key: 'script', dir: 'asc' };
     const longSort = container._longSort || { key: 'script', dir: 'asc' };
@@ -128,10 +122,6 @@
     const sipProg = Math.max(0, Math.min(100, ((30 - sipDays) / 30) * 100));
     const sipRoiCards = buildSipRoiCards();
     const sipEntryMonths = getSipEntryMonths();
-    const targetWorth = 150000000;
-    const currentWorth = Number(totals.total || 0) + Math.max(0, cash);
-    const completion = Math.max(0, Math.min(100, (currentWorth / targetWorth) * 100));
-    const remainingToTarget = Math.max(0, targetWorth - currentWorth);
 
     container.innerHTML = `
       <div class="kpi-strip dash-row">
@@ -153,12 +143,6 @@
         <div class="kpi-card kpi-cash" id="dash-kpi-cash">
           <div class="kpi-label">CASH BALANCE</div>
           <div class="kpi-value cash-color mono">${fmtRs(Math.abs(cash), 0)}</div>
-          <div class="kpi-target-progress" title="Remaining to target: ${fmtRs(remainingToTarget, 0)}">
-            <strong>${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : `${completion.toFixed(2)}%`}</strong>
-            <div class="target-progress-track">
-              <div class="target-progress-fill" style="width:${completion.toFixed(2)}%;"></div>
-            </div>
-          </div>
         </div>
 
       </div>
@@ -168,8 +152,8 @@
         <div class="info-card" id="dash-sip-card">
           <div class="info-card-title" style="margin-bottom:0;">SIP DUE SUMMARY</div>
           <div class="sip-countdown">
-            <div class="sip-days">${sipDays === 0 ? 'TODAY' : sipDays}</div>
-            <div class="sip-label">${sipDays === 0 ? 'INVEST NOW' : `DAY${sipDays !== 1 ? 'S' : ''} UNTIL 15TH`}</div>
+            <div class="sip-days">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : (sipDays === 0 ? 'TODAY' : sipDays)}</div>
+            <div class="sip-label">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : (sipDays === 0 ? 'INVEST NOW' : `DAY${sipDays !== 1 ? 'S' : ''} UNTIL 15TH`)}</div>
             <div class="sip-bar"><div class="sip-bar-fill" style="width:${sipProg}%;"></div></div>
           </div>
           <div class="sip-meta-row">
@@ -177,32 +161,6 @@
             <div class="sip-meta-chip"><span>KSLY ENTRIES</span><strong>${sipEntryMonths.KSLY} Months</strong></div>
           </div>
           <div class="dash-sip-roi-grid">${sipRoiCards}</div>
-        </div>
-      </div>
-
-      <div class="dash-row" id="dash-best-wrap">
-        <div class="best-stock-card latest-trade-card">
-          <div class="info-card-title latest-head" style="margin-bottom:8px;">LATEST ADDED TRADE</div>
-          <div class="latest-trade-list">
-            ${latestRows.length ? latestRows.map((row) => {
-              const invested = Number(row.wacc || 0) * Number(row.qty || 0);
-              const sell = calcSellReceivable(row, 'trade');
-              const plAfterTax = sell - invested;
-              const qty = Number(row.qty || 0);
-              const plPerShare = qty > 0 ? plAfterTax / qty : 0;
-              return `<div class="latest-trade-item">
-                <div class="latest-trade-title">${row.script || '-'}</div>
-                <div class="latest-trade-meta">
-                  <span><label>QTY</label><strong>${fmt(row.qty, 0)}</strong></span>
-                  <span><label>LTP</label><strong>${fmtRs(row.ltp, 2)}</strong></span>
-                  <span><label>INVESTED</label><strong title="WACC: ${fmtRs(row.wacc, 2)}">${fmtRs(invested, 0)}</strong></span>
-                  <span><label>SELL</label><strong class="${sell >= invested ? 'profit' : 'loss'}">${fmtRs(sell, 0)}</strong></span>
-                  <span><label>P/L</label><strong class="profit">${plSign(plAfterTax)}${fmtRs(plAfterTax, 0)}</strong></span>
-                  <span><label>P/L SHARE</label><strong class="${plPerShare >= 0 ? 'profit' : 'loss'}">${plSign(plPerShare)}${fmtRs(plPerShare, 2)}</strong></span>
-                </div>
-              </div>`;
-            }).join('') : '<div class="latest-trade-empty">No trades added yet</div>'}
-          </div>
         </div>
       </div>
 
@@ -308,7 +266,7 @@
         <tbody>
           ${rows.map(r => `
             <tr>
-              <td style="font-weight:700;color:var(--text-primary);">${r.script}</td>
+              <td style="font-weight:700;color:var(--text-primary);">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : r.script}</td>
               <td>${fmt(r.qty, 0)}</td>
               <td>${fmtRs(r.ltp, 2)}</td>
               <td><span class="invested-info" title="WACC: ${fmtRs(r.wacc, 2)}">${fmtRs(r.invested, 0)}</span></td>
