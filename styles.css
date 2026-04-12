@@ -17,21 +17,21 @@
   --text-muted:     #67789b;
   --text-dim:       #8d9dbc;
 
-  --green:          #7bc9a6;
-  --green-dim:      rgba(123,201,166,.2);
-  --green-mid:      #5bb890;
+  --green:          #73b99d;
+  --green-dim:      rgba(115,185,157,.18);
+  --green-mid:      #5ca589;
   --red:            #de7a8f;
   --red-dim:        rgba(222,122,143,.16);
   --red-mid:        #cb617a;
 
-  --blue:           #83b9f4;
-  --blue-dim:       rgba(131,185,244,.2);
+  --blue:           #7aa6d9;
+  --blue-dim:       rgba(122,166,217,.18);
   --amber:          #f4cd73;
   --amber-dim:      rgba(244,205,115,.2);
-  --purple:         #bba2ec;
-  --purple-dim:     rgba(187,162,236,.2);
-  --cyan:           #84d8e6;
-  --cyan-dim:       rgba(132,216,230,.22);
+  --purple:         #a995d2;
+  --purple-dim:     rgba(169,149,210,.18);
+  --cyan:           #76bfcb;
+  --cyan-dim:       rgba(118,191,203,.18);
 
   --font-mono:      'JetBrains Mono', 'Fira Code', monospace;
   --font-sans:      'IBM Plex Sans', system-ui, sans-serif;
@@ -1722,7 +1722,7 @@ tbody tr:hover {
 .privacy-eye-btn {
   border: 1px solid var(--border);
   background: var(--bg-card);
-  color: var(--text-muted);
+  color: var(--text-dim);
   border-radius: 4px;
   min-width: 56px;
   height: 22px;
@@ -1732,8 +1732,12 @@ tbody tr:hover {
   letter-spacing: .03em;
   cursor: pointer;
 }
-.privacy-eye-btn:hover,
-.privacy-eye-btn.active { color: var(--text-primary); border-color: var(--border-focus); }
+.privacy-eye-btn:hover { border-color: var(--border-focus); }
+.privacy-eye-btn.active {
+  color: #ffffff;
+  background: #7f8eaa;
+  border-color: #7f8eaa;
+}
 .rs-prefix-btn { min-width: 66px; }
 
 .tb-btn-icon { min-width: 30px; padding: 0 7px; font-size: 14px; line-height: 1; }

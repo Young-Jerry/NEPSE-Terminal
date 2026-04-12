@@ -43,11 +43,16 @@
     }
   }
 
-  function daysUntil15th() {
+  function readSipDueDay() {
+    return window.PmsSettings && window.PmsSettings.getSipDueDay ? window.PmsSettings.getSipDueDay() : null;
+  }
+
+  function daysUntilSipDueDay(dueDay) {
+    if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 28) return null;
     const now = new Date();
     const d = now.getDate();
-    if (d === 15) return 0;
-    const target = d < 15 ? new Date(now.getFullYear(), now.getMonth(), 15) : new Date(now.getFullYear(), now.getMonth() + 1, 15);
+    if (d === dueDay) return 0;
+    const target = d < dueDay ? new Date(now.getFullYear(), now.getMonth(), dueDay) : new Date(now.getFullYear(), now.getMonth() + 1, dueDay);
     return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
   }
 
@@ -118,8 +123,9 @@
     const topTrades = getTopNBySort('trades', tradeSort, 3, tradeFilter, 'trade');
     const topLong = getTopNBySort('longterm', longSort, 3, longFilter, 'long');
 
-    const sipDays = daysUntil15th();
-    const sipProg = Math.max(0, Math.min(100, ((30 - sipDays) / 30) * 100));
+    const sipDueDay = readSipDueDay();
+    const sipDays = daysUntilSipDueDay(sipDueDay);
+    const sipProg = sipDays == null ? 0 : Math.max(0, Math.min(100, ((31 - sipDays) / 31) * 100));
     const sipRoiCards = buildSipRoiCards();
     const sipEntryMonths = getSipEntryMonths();
 
@@ -152,8 +158,8 @@
         <div class="info-card" id="dash-sip-card">
           <div class="info-card-title" style="margin-bottom:0;">SIP DUE SUMMARY</div>
           <div class="sip-countdown">
-            <div class="sip-days">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : (sipDays === 0 ? 'TODAY' : sipDays)}</div>
-            <div class="sip-label">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : (sipDays === 0 ? 'INVEST NOW' : `DAY${sipDays !== 1 ? 'S' : ''} UNTIL 15TH`)}</div>
+            <div class="sip-days">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : (sipDays == null ? 'NOT GIVEN' : (sipDays === 0 ? 'TODAY' : sipDays))}</div>
+            <div class="sip-label">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : (sipDays == null ? 'DAYS UNTIL ?TH' : (sipDays === 0 ? 'INVEST NOW' : `DAY${sipDays !== 1 ? 'S' : ''} UNTIL ${sipDueDay}TH`))}</div>
             <div class="sip-bar"><div class="sip-bar-fill" style="width:${sipProg}%;"></div></div>
           </div>
           <div class="sip-meta-row">

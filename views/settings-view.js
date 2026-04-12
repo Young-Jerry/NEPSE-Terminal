@@ -124,6 +124,33 @@ function renderSettings(container) {
       </div>
     </div>
 
+
+    <!-- SIP Due Date -->
+    <div class="settings-section">
+      <div class="settings-title">
+        <svg viewBox="0 0 16 16" width="16"><rect x="2" y="3" width="12" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 1.5v3M11 1.5v3M2 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        SIP Due Date
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Monthly Due Day</div>
+          <div class="settings-row-sub">Set which day of month SIP is due (1-28). Dashboard countdown uses this value.</div>
+        </div>
+        <div class="toolbar">
+          <input type="number" class="form-input" id="settings-sip-due-day-input" placeholder="15" min="1" max="28" step="1" style="width:84px;" />
+          <button class="btn-primary" id="settings-sip-due-save-btn">Save</button>
+          <button class="btn-secondary" id="settings-sip-due-clear-btn">Clear</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Current Due Day</div>
+          <div class="settings-row-sub">Shown in dashboard SIP Due Summary.</div>
+        </div>
+        <span class="mono" id="settings-sip-due-current" style="font-size:13px;font-weight:700;color:var(--text-primary);"></span>
+      </div>
+    </div>
+
     <!-- Danger Zone -->
     <div class="settings-section" style="border-color:rgba(244,63,94,0.3);">
       <div class="settings-title" style="color:var(--red);">
@@ -166,7 +193,16 @@ function renderSettings(container) {
     const el = container.querySelector('#settings-cash-val');
     if (el && window.PmsCapital) el.textContent = currencyInt(window.PmsCapital.readCash());
   };
+  const updateSipDueDisplay = () => {
+    const current = container.querySelector('#settings-sip-due-current');
+    const input = container.querySelector('#settings-sip-due-day-input');
+    if (!current || !input || !window.PmsSettings) return;
+    const dueDay = window.PmsSettings.getSipDueDay();
+    current.textContent = dueDay ? `${dueDay}th` : 'NOT GIVEN';
+    input.value = dueDay || '';
+  };
   updateCashDisplay();
+  updateSipDueDisplay();
   window.addEventListener('pms-cash-updated', updateCashDisplay);
 
   // Backup
@@ -202,7 +238,7 @@ function renderSettings(container) {
       await window.PmsBackup.restoreEncryptedBackupCSV(text, password);
       showStatus('Data restored ✓ Reloading…');
       setTimeout(() => location.reload(), 700);
-    } catch { showStatus('Invalid backup file.'); }
+    } catch (err) { showStatus(err && err.message === 'Access Denied' ? 'Access Denied' : 'Invalid backup file.'); }
     finally { e.target.value = ''; }
   });
 
@@ -231,6 +267,24 @@ function renderSettings(container) {
       confirmText: 'Override',
       onConfirm: () => { window.PmsCapital.setCash(val); updateCashDisplay(); showStatus('Cash balance updated ✓'); },
     });
+  });
+
+  // SIP due day
+  container.querySelector('#settings-sip-due-save-btn').addEventListener('click', () => {
+    if (!window.PmsSettings) return;
+    const val = container.querySelector('#settings-sip-due-day-input').value.trim();
+    const parsed = Math.floor(Number(val));
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 28) return showStatus('Due day must be 1-28.');
+    window.PmsSettings.setSipDueDay(parsed);
+    updateSipDueDisplay();
+    showStatus('SIP due day saved ✓');
+  });
+
+  container.querySelector('#settings-sip-due-clear-btn').addEventListener('click', () => {
+    if (!window.PmsSettings) return;
+    window.PmsSettings.setSipDueDay('');
+    updateSipDueDisplay();
+    showStatus('SIP due day cleared ✓');
   });
 
   // Danger zone

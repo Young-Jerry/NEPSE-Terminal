@@ -490,6 +490,21 @@ async function deriveBackupKey(password, salt) {
   );
 }
 
+async function sha256Base64(text) {
+  const enc = new TextEncoder();
+  const digest = await crypto.subtle.digest('SHA-256', enc.encode(String(text || '')));
+  return bytesToBase64(new Uint8Array(digest));
+}
+
+function createChaosNoiseRow(index) {
+  const tags = ['void', 'junk', 'noise', 'mask', 'spill', 'drift', 'warp'];
+  const tag = tags[index % tags.length];
+  const a = Math.random().toString(36).slice(2, 13);
+  const b = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const c = Math.random().toString(36).slice(2, 8);
+  return [`x${index}`, tag, a, b, c].join(',');
+}
+
 async function createEncryptedBackupCSV(password) {
   const snap = createPortfolioSnapshot();
   const payload = JSON.stringify(snap);
@@ -500,8 +515,9 @@ async function createEncryptedBackupCSV(password) {
   const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(payload));
   const cipherBase64 = bytesToBase64(new Uint8Array(encrypted));
   const chunks = cipherBase64.match(/.{1,28}/g) || [];
+  const passwordHash = await sha256Base64(`${password}::${bytesToBase64(salt)}`);
   const rows = [
-    ['meta', 'NEPSE-CHAOS-V1', new Date().toISOString(), bytesToBase64(salt), bytesToBase64(iv), String(chunks.length)].join(','),
+    ['meta', 'NEPSE-CHAOS-V2', new Date().toISOString(), bytesToBase64(salt), bytesToBase64(iv), String(chunks.length), passwordHash].join(','),
   ];
   chunks.forEach((chunk, index) => {
     const reverse = chunk.split('').reverse().join('');
@@ -509,6 +525,14 @@ async function createEncryptedBackupCSV(password) {
     const noiseB = Math.random().toString(36).slice(2, 8);
     rows.push([`r${index}`, noiseA, reverse, noiseB, `z${index % 7}`].join(','));
   });
+
+  const MIN_ROWS = 500;
+  let noiseIdx = 0;
+  while (rows.length < MIN_ROWS - 1) {
+    rows.push(createChaosNoiseRow(noiseIdx));
+    noiseIdx += 1;
+  }
+
   rows.push(['end', 'ok', Math.random().toString(36).slice(2, 12)].join(','));
   return rows.join('\n');
 }
@@ -517,12 +541,23 @@ async function restoreEncryptedBackupCSV(csvText, password) {
   const lines = String(csvText || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   if (!lines.length) throw new Error('Empty backup file');
   const meta = lines[0].split(',');
-  if (meta.length < 6 || meta[0] !== 'meta' || meta[1] !== 'NEPSE-CHAOS-V1') {
+  if (meta.length < 6 || meta[0] !== 'meta' || !/^NEPSE-CHAOS-V[12]$/.test(meta[1])) {
     throw new Error('Unsupported backup format');
   }
   const salt = base64ToBytes(meta[3]);
   const iv = base64ToBytes(meta[4]);
   const expectedChunks = Number(meta[5]);
+
+  if (meta[1] === 'NEPSE-CHAOS-V2') {
+    const savedHash = meta[6] || '';
+    const inputHash = await sha256Base64(`${password}::${bytesToBase64(salt)}`);
+    if (!savedHash || savedHash !== inputHash) {
+      const deniedError = new Error('Access Denied');
+      deniedError.code = 'ACCESS_DENIED';
+      throw deniedError;
+    }
+  }
+
   const chunkRows = lines.slice(1).filter(line => /^r\d+,/.test(line));
   if (!Number.isFinite(expectedChunks) || expectedChunks < 1 || chunkRows.length < expectedChunks) {
     throw new Error('Backup data is incomplete');

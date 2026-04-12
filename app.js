@@ -58,6 +58,7 @@
   // ── PRIVACY MODE ────────────────────────────────────────────────
   const PRIVACY_KEY = 'pms_privacy_mode_v1';
   const RS_PREFIX_KEY = 'pms_show_rs_prefix_v1';
+  const SIP_DUE_DAY_KEY = 'pms_sip_due_day_v1';
   let privacyEnabled = localStorage.getItem(PRIVACY_KEY) === '1';
   let rsPrefixEnabled = localStorage.getItem(RS_PREFIX_KEY) !== '0';
 
@@ -114,7 +115,7 @@
     document.body.classList.toggle('privacy-on', privacyEnabled);
     if (privacyToggleBtn) {
       privacyToggleBtn.textContent = privacyEnabled ? 'HIDDEN' : 'VISIBLE';
-      privacyToggleBtn.classList.toggle('active', privacyEnabled);
+      privacyToggleBtn.classList.toggle('active', !privacyEnabled);
     }
     if (rsToggleBtn) {
       rsToggleBtn.textContent = rsPrefixEnabled ? '₹ ON' : '₹ OFF';
@@ -163,6 +164,23 @@
   window.PmsDisplay = {
     showRsPrefix: () => rsPrefixEnabled,
     setRsPrefixEnabled: setRsPrefixMode,
+  };
+
+  window.PmsSettings = {
+    getSipDueDay: () => {
+      const day = Number(localStorage.getItem(SIP_DUE_DAY_KEY));
+      return Number.isInteger(day) && day >= 1 && day <= 28 ? day : null;
+    },
+    setSipDueDay: (day) => {
+      if (day == null || day === '') {
+        localStorage.removeItem(SIP_DUE_DAY_KEY);
+      } else {
+        const parsed = Math.floor(Number(day));
+        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 28) throw new Error('Due day must be between 1 and 28.');
+        localStorage.setItem(SIP_DUE_DAY_KEY, String(parsed));
+      }
+      window.dispatchEvent(new CustomEvent('pms-sip-due-day-changed'));
+    },
   };
 
   if (privacyToggleBtn) privacyToggleBtn.addEventListener('click', () => setPrivacyMode(!privacyEnabled));
@@ -503,7 +521,9 @@
       await window.PmsBackup.restoreEncryptedBackupCSV(text, password);
       showAlert('Data restored. Reloading…', true);
       setTimeout(() => location.reload(), 600);
-    } catch { showAlert('Invalid backup file.', false); }
+    } catch (err) {
+      showAlert(err && err.message === 'Access Denied' ? 'Access Denied' : 'Invalid backup file.', false);
+    }
     finally { e.target.value = ''; }
   });
 
