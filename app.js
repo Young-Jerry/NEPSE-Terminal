@@ -102,6 +102,7 @@
     privacyEnabled = Boolean(next);
     localStorage.setItem(PRIVACY_KEY, privacyEnabled ? '1' : '0');
     applyPrivacyMode();
+    updateCashDisplay();
     window.dispatchEvent(new CustomEvent('pms-privacy-changed', { detail: { enabled: privacyEnabled } }));
     if (currentView && ROUTES[currentView]) {
       const container = document.getElementById(`view-${currentView}`);
