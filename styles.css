@@ -426,7 +426,7 @@ body.sidebar-open .main-area { margin-left: var(--sidebar-w); }
 /* Row 1: KPI strip */
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -455,6 +455,7 @@ body.sidebar-open .main-area { margin-left: var(--sidebar-w); }
 .kpi-card.kpi-nw::before    { background: var(--blue); }
 .kpi-card.kpi-pl::before    { background: var(--amber); }
 .kpi-card.kpi-cash::before  { background: var(--cyan); }
+.kpi-card.kpi-booked::before { background: var(--green); }
 
 .kpi-label {
   font-family: var(--font-mono);
@@ -467,9 +468,13 @@ body.sidebar-open .main-area { margin-left: var(--sidebar-w); }
 
 .kpi-value {
   font-family: var(--font-mono);
-  font-size: 22px; font-weight: 700;
+  font-size: 20px; font-weight: 700;
   line-height: 1;
   color: var(--text-primary);
+}
+.kpi-value-tight {
+  font-size: 15px;
+  line-height: 1.25;
 }
 .kpi-value.profit { color: var(--green); }
 .kpi-value.loss   { color: var(--red); }

@@ -122,6 +122,9 @@
     const longFilter = container._longFilter || '';
     const topTrades = getTopNBySort('trades', tradeSort, 3, tradeFilter, 'trade');
     const topLong = getTopNBySort('longterm', longSort, 3, longFilter, 'long');
+    const bookedProfit = window.PmsCapital && window.PmsCapital.readProfitCashedOut
+      ? Number(window.PmsCapital.readProfitCashedOut() || 0)
+      : 0;
 
     const sipDueDay = readSipDueDay();
     const sipDays = daysUntilSipDueDay(sipDueDay);
@@ -136,7 +139,7 @@
       <div class="kpi-strip dash-row">
         <div class="kpi-card kpi-roi" id="dash-kpi-roi">
           <div class="kpi-label">EXITED TRADE BALANCE</div>
-          <div class="kpi-value ${plCls(realized.totalProfit)}">${plSign(realized.totalProfit)}${fmtRs(realized.totalProfit, 0)} (${plSign(realized.roi)}${fmtPct(realized.roi, 2)})</div>
+          <div class="kpi-value kpi-value-tight ${plCls(realized.totalProfit)}">${plSign(realized.totalProfit)}${fmtRs(realized.totalProfit, 0)} (${plSign(realized.roi)}${fmtPct(realized.roi, 2)})</div>
         </div>
 
         <div class="kpi-card kpi-nw" id="dash-kpi-nw">
@@ -152,6 +155,11 @@
         <div class="kpi-card kpi-cash" id="dash-kpi-cash">
           <div class="kpi-label">CASH BALANCE</div>
           <div class="kpi-value cash-color mono">${fmtRs(Math.abs(cash), 0)}</div>
+        </div>
+
+        <div class="kpi-card kpi-booked" id="dash-kpi-booked">
+          <div class="kpi-label">BOOKED PROFITS</div>
+          <div class="kpi-value mono ${plCls(bookedProfit)}">${plSign(bookedProfit)}${fmtRs(bookedProfit, 0)}</div>
         </div>
 
       </div>
@@ -305,9 +313,10 @@
 
   function showNetWorthModal(totals) {
     const nw = totals.total;
+    const bookedProfit = Number(totals.bookedProfit || 0);
     window.Modal && Modal.open({
       title: 'Net Worth Breakdown',
-      body: `<div style="font-family:var(--font-mono);font-size:12px;display:grid;gap:8px;"><div>Active Trades: <strong>${fmtRs(totals.trades.value || 0, 0)}</strong></div><div>Long-Term: <strong>${fmtRs(totals.longterm.value || 0, 0)}</strong></div><div>SIP / MF: <strong>${fmtRs(totals.sip.value || 0, 0)}</strong></div><div>NET WORTH: <strong style="color:var(--blue);">${fmtRs(nw, 0)}</strong></div></div>`,
+      body: `<div style="font-family:var(--font-mono);font-size:12px;display:grid;gap:8px;"><div>Active Trades: <strong>${fmtRs(totals.trades.value || 0, 0)}</strong></div><div>Long-Term: <strong>${fmtRs(totals.longterm.value || 0, 0)}</strong></div><div>SIP / MF: <strong>${fmtRs(totals.sip.value || 0, 0)}</strong></div><div>Booked Profits (Cash Ledger): <strong>${fmtRs(bookedProfit, 0)}</strong></div><div>NET WORTH: <strong style="color:var(--blue);">${fmtRs(nw, 0)}</strong></div></div>`,
       footer: `<button class="btn-secondary" onclick="Modal.close()">Close</button>`,
     });
   }

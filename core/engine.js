@@ -689,12 +689,14 @@ const Analytics = (() => {
 
     const tradeValue = tradeLikeTotal(trades);
     const longValue = tradeLikeTotal(longterm);
+    const bookedProfit = Number(readProfitCashedOut() || 0);
 
     return {
       trades: { value: tradeValue, invested: tradeInvested, pl: tradeValue - tradeInvested },
       longterm: { value: longValue, invested: longInvested, pl: longValue - longInvested },
       sip: { value: sipTotal, invested: sipInvested, pl: sipTotal - sipInvested },
-      total: tradeValue + longValue + sipTotal,
+      bookedProfit,
+      total: tradeValue + longValue + sipTotal + bookedProfit,
       totalInvested: tradeInvested + longInvested + sipInvested,
     };
   }
