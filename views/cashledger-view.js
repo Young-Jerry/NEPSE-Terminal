@@ -16,14 +16,9 @@ function renderCashLedger(container) {
       <div class="add-panel-title">Cash Overview</div>
       <div class="ledger-breakdown-grid">
         <div class="ledger-breakdown-card"><div class="ledger-breakdown-label">Cash Balance</div><div class="ledger-breakdown-val mono" id="ledger-cash-bal">Rs 0</div></div>
-        <div class="ledger-breakdown-card"><div class="ledger-breakdown-label">Profit Cashed Out</div><div class="ledger-breakdown-val mono" id="ledger-profit-out">Rs 0</div></div>
+        <div class="ledger-breakdown-card"><div class="ledger-breakdown-label">Profit Cashed</div><div class="ledger-breakdown-val mono" id="ledger-profit-out">Rs 0</div></div>
       </div>
     </div>
-    <div class="add-panel mb20">
-      <div class="add-panel-title">Transaction Breakdown</div>
-      <div class="ledger-breakdown-grid" id="ledger-breakdown-body"></div>
-    </div>
-
     <!-- Entry Forms Row -->
     <div class="dashboard-row mb20">
       <!-- Manual Transaction -->
@@ -59,6 +54,13 @@ function renderCashLedger(container) {
         <form id="ledger-profit-form" autocomplete="off">
           <div class="form-grid">
             <div class="form-group">
+              <label class="form-label">Type</label>
+              <select class="form-select" name="profitType">
+                <option value="in">Profit Cashed In</option>
+                <option value="out" selected>Profit Cashed Out</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label class="form-label">Amount (Rs)</label>
               <input type="number" class="form-input" name="amount" min="1" step="1" placeholder="5000" required />
             </div>
@@ -67,11 +69,11 @@ function renderCashLedger(container) {
               <input type="text" class="form-input" name="note" value="Profit Cashed Out" />
             </div>
             <div class="form-group" style="align-self:end;">
-              <button type="submit" class="btn-primary" style="width:100%;">Cash Out</button>
+              <button type="submit" class="btn-primary" style="width:100%;">Save</button>
             </div>
           </div>
           <div style="font-size:10px;color:var(--text-muted);margin-top:8px;">
-            * A Rs ${8} processing fee is deducted from the payout amount.
+            * Profit Cashed In includes Rs 2 fee, Profit Cashed Out includes Rs 8 fee.
           </div>
         </form>
       </div>
@@ -106,6 +108,14 @@ function renderCashLedger(container) {
   const profitForm = container.querySelector('#ledger-profit-form');
   const clearBtn   = container.querySelector('#ledger-clear-btn');
 
+  const profitTypeEl = container.querySelector('#ledger-profit-form select[name="profitType"]');
+  if (profitTypeEl) {
+    profitTypeEl.addEventListener('change', () => {
+      const noteInput = container.querySelector('#ledger-profit-form input[name="note"]');
+      if (noteInput) noteInput.value = profitTypeEl.value === 'in' ? 'Profit Cashed In' : 'Profit Cashed Out';
+    });
+  }
+
   txnForm.addEventListener('submit', e => {
     e.preventDefault();
     const fd     = new FormData(txnForm);
@@ -122,11 +132,14 @@ function renderCashLedger(container) {
   profitForm.addEventListener('submit', e => {
     e.preventDefault();
     const fd     = new FormData(profitForm);
+    const direction = String(fd.get('profitType') || 'out');
     const amount = Math.round(Number(fd.get('amount')));
     const note   = String(fd.get('note') || '').trim();
     if (!isFinite(amount) || amount <= 0) return;
-    window.PmsCapital.addProfitCashEntry('out', amount, note);
+    window.PmsCapital.addProfitCashEntry(direction, amount, note);
     profitForm.reset();
+    const typeEl = profitForm.querySelector('select[name="profitType"]');
+    if (typeEl) typeEl.value = 'out';
     profitForm.querySelector('input[name="note"]').value = 'Profit Cashed Out';
     render();
   });
@@ -156,22 +169,9 @@ function renderCashLedger(container) {
     container.querySelector('#ledger-profit-out').textContent  = currencyInt(profitOut);
 
     const tbody = container.querySelector('#ledger-tbody');
-    const breakdownBody = container.querySelector('#ledger-breakdown-body');
     const sorted = [...ledger].sort((a, b) =>
       new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     );
-
-    const totalCredits = ledger.filter(x => Number(x.delta) > 0).reduce((s, x) => s + Number(x.delta || 0), 0);
-    const totalDebits = ledger.filter(x => Number(x.delta) < 0).reduce((s, x) => s + Math.abs(Number(x.delta || 0)), 0);
-    const profitOutAmount = ledger.filter(x => String(x.entryCategory) === 'profit').reduce((s, x) => s + Math.abs(Number(x.baseAmount || x.delta || 0)), 0);
-    const profitFees = ledger.filter(x => String(x.entryCategory) === 'profit_fee').reduce((s, x) => s + Math.abs(Number(x.delta || 0)), 0);
-    breakdownBody.innerHTML = `
-      <div class="ledger-breakdown-card"><div class="ledger-breakdown-label">Total Cash In</div><div class="ledger-breakdown-val mono">${currencyInt(totalCredits)}</div></div>
-      <div class="ledger-breakdown-card"><div class="ledger-breakdown-label">Total Cash Out</div><div class="ledger-breakdown-val mono">${currencyInt(totalDebits)}</div></div>
-      <div class="ledger-breakdown-card"><div class="ledger-breakdown-label">Profit Cashed Out</div><div class="ledger-breakdown-val mono">${currencyInt(profitOutAmount)}</div></div>
-      <div class="ledger-breakdown-card"><div class="ledger-breakdown-label">Processing Fees</div><div class="ledger-breakdown-val mono">${currencyInt(profitFees)}</div></div>
-      <div class="ledger-breakdown-card"><div class="ledger-breakdown-label">Current Cash Balance</div><div class="ledger-breakdown-val mono">${currencyInt(cash)}</div></div>
-    `;
 
     tbody.innerHTML = '';
 
@@ -184,9 +184,10 @@ function renderCashLedger(container) {
       const isCredit    = Number(entry.delta) >= 0;
       const isProfit    = String(entry.entryCategory || '') === 'profit';
       const isProfitFee = String(entry.entryCategory || '') === 'profit_fee';
-      const typeLabel   = isProfit ? 'Profit Cashed Out' : isProfitFee ? 'Profit Cash-out Fee' : (isCredit ? 'Cash In' : 'Cash Out');
+      const typeLabel   = entry.type === 'profit_in' ? 'Profit Cashed In' : isProfit ? 'Profit Cashed Out' : isProfitFee ? 'Profit Cash Fee' : (isCredit ? 'Cash In' : 'Cash Out');
       const category    = isProfit || isProfitFee ? 'Profit Entry' : 'Transaction';
-      const amtClass    = isCredit ? 'ledger-type-credit' : 'ledger-type-debit';
+      const signedAmt = isProfit ? (entry.type === 'profit_in' ? -Math.abs(Number(entry.baseAmount || 0)) : Math.abs(Number(entry.baseAmount || 0))) : Number(entry.delta || 0);
+      const amtClass = (isProfit ? signedAmt > 0 : isCredit) ? 'ledger-type-credit' : 'ledger-type-debit';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -194,7 +195,7 @@ function renderCashLedger(container) {
         <td>${escHtml(category)}</td>
         <td><span class="badge ${isCredit ? 'badge-green' : 'badge-red'}">${escHtml(typeLabel)}</span></td>
         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">${escHtml(entry.note || '—')}</td>
-        <td class="mono ${amtClass}" style="font-weight:700;">${currencyInt(entry.delta)}</td>
+        <td class="mono ${amtClass}" style="font-weight:700;">${isProfit ? currencyInt(signedAmt) : currencyInt(entry.delta)}</td>
         <td class="actions-td"></td>
       `;
 
@@ -215,7 +216,7 @@ function renderCashLedger(container) {
         delBtn.addEventListener('click', () => {
           Modal.confirm({
             title: 'Delete Entry',
-            message: `Remove this ${typeLabel} entry of ${currencyInt(entry.delta)}?`,
+            message: `Remove this ${typeLabel} entry of ${isProfit ? currencyInt(signedAmt) : currencyInt(entry.delta)}?`,
             confirmText: 'Delete',
             onConfirm: () => { window.PmsCapital.deleteLedgerEntry(entry.id); render(); },
           });
@@ -257,8 +258,9 @@ function renderCashLedger(container) {
       let nextDelta  = parsed;
       let patchType  = entry.type;
       if (entry.entryCategory === 'profit') {
-        patchType  = 'profit_out';
-        nextDelta  = window.PmsCapital.computeProfitDelta('out', parsed);
+        const direction = entry.type === 'profit_in' ? 'in' : 'out';
+        patchType  = entry.type;
+        nextDelta  = window.PmsCapital.computeProfitDelta(direction, parsed);
       } else {
         nextDelta = entry.delta >= 0 ? parsed : -parsed;
       }

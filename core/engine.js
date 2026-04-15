@@ -88,6 +88,8 @@ window.PmsTradeMath = {
 const CASH_KEY = 'cashBalanceV1';
 const LEDGER_KEY = 'cashLedgerV1';
 const PROFIT_OUT_FEE = 8;
+const PROFIT_IN_FEE = 2;
+const PROFIT_CASHED_BAL_KEY = 'profitCashedBalanceV1';
 const PROFIT_BOOK_SERIES_KEY = 'profitBookedSeriesV1';
 const PROFIT_CASHED_BASE_KEY = 'profitCashedBaseV1';
 const PROFIT_BOOK_START_DATE = '2026-04-06';
@@ -138,6 +140,7 @@ function adjustCash(delta, meta = {}) {
     entryCategory: String(meta.entryCategory || 'transaction'),
     baseAmount: Math.round(Number(meta.baseAmount || Math.abs(change))),
     charges: Number(meta.charges || 0), editable: Boolean(meta.editable),
+    profitDelta: Math.round(Number(meta.profitDelta || 0)),
   });
   saveLedger(ledger);
   return next;
@@ -173,6 +176,7 @@ function deleteLedgerEntry(id) {
 
 function clearLedgerHistory() {
   setProfitCashedBase(readProfitCashedOut());
+  setProfitCashedBalance(readProfitCashedOut());
   saveLedger([]);
   syncProfitBookedWithLedger();
   window.dispatchEvent(new CustomEvent('pms-cash-updated', { detail: { cash: readCash() } }));
@@ -192,7 +196,9 @@ function investedCapital() {
 function computeProfitDelta(direction, amount) {
   const baseAmount = Math.round(Number(amount || 0));
   if (!Number.isFinite(baseAmount) || baseAmount <= 0) return 0;
-  return direction === 'out' ? -baseAmount : 0;
+  if (direction === 'out') return -baseAmount;
+  if (direction === 'in') return baseAmount;
+  return 0;
 }
 
 function readProfitCashedBase() {
@@ -206,33 +212,105 @@ function setProfitCashedBase(value) {
   return safe;
 }
 
+function readProfitCashedOut() {
+  const raw = localStorage.getItem(PROFIT_CASHED_BAL_KEY);
+  if (raw != null) {
+    const parsed = Math.round(Number(raw || 0));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  const legacy = readProfitCashedBase() + readLedger().reduce((sum, row) => {
+    if (row.entryCategory !== 'profit') return sum;
+    const amount = Number(row.baseAmount || Math.abs(Number(row.delta || 0)));
+    if (row.type === 'profit_out') return sum + amount;
+    if (row.type === 'profit_in') return sum - amount;
+    return sum;
+  }, 0);
+  const seeded = Math.max(0, Math.round(Number(legacy || 0)));
+  localStorage.setItem(PROFIT_CASHED_BAL_KEY, String(seeded));
+  return seeded;
+}
+
+function setProfitCashedBalance(value) {
+  const safe = Math.max(0, Math.round(Number(value || 0)));
+  localStorage.setItem(PROFIT_CASHED_BAL_KEY, String(safe));
+  return safe;
+}
+
+function adjustProfitCashed(delta, meta = {}) {
+  const change = Math.round(Number(delta || 0));
+  if (!Number.isFinite(change) || change === 0) return readProfitCashedOut();
+  const current = readProfitCashedOut();
+  const next = Math.max(0, current + change);
+  if (next === current && change < 0) {
+    showCashAlert('Not enough profit cashed balance.');
+    return current;
+  }
+  setProfitCashedBalance(next);
+  const ledger = readLedger();
+  ledger.push({
+    id: crypto.randomUUID(), createdAt: new Date().toISOString(),
+    delta: 0, note: String(meta.note || ''),
+    type: String(meta.type || (change >= 0 ? 'profit_out' : 'profit_in')),
+    kind: String(meta.kind || 'system'),
+    entryCategory: 'profit',
+    baseAmount: Math.abs(change),
+    charges: Number(meta.charges || 0), editable: Boolean(meta.editable),
+    profitDelta: change,
+  });
+  saveLedger(ledger);
+  window.dispatchEvent(new CustomEvent('pms-cash-updated', { detail: { cash: readCash() } }));
+  syncProfitBookedWithLedger();
+  return next;
+}
+
 function addProfitCashEntry(direction, amount, note = '') {
+  const mode = direction === 'in' ? 'in' : 'out';
   const baseAmount = Math.round(Number(amount || 0));
   if (!Number.isFinite(baseAmount) || baseAmount <= 0) return readCash();
-  const feeAmount = Math.min(PROFIT_OUT_FEE, baseAmount);
+  const feeAmount = Math.min(mode === 'in' ? PROFIT_IN_FEE : PROFIT_OUT_FEE, baseAmount);
   const payoutAmount = Math.max(0, baseAmount - feeAmount);
-  const mainNote = String(note || '').trim() || 'Profit Cashed Out';
-  const afterPayout = adjustCash(computeProfitDelta('out', payoutAmount), {
-    note: `${mainNote} · Net ${payoutAmount}`, type: 'profit_out',
-    kind: 'manual', entryCategory: 'profit', baseAmount: payoutAmount, charges: 0, editable: true,
+  const mainNote = String(note || '').trim() || (mode === 'in' ? 'Profit Cashed In' : 'Profit Cashed Out');
+
+  if (mode === 'out') {
+    const afterPayout = adjustCash(-payoutAmount, {
+      note: `${mainNote} · Net ${payoutAmount}`,
+      type: 'profit_out', kind: 'manual', entryCategory: 'profit',
+      baseAmount: payoutAmount, charges: 0, editable: true,
+      profitDelta: payoutAmount,
+    });
+    if (feeAmount > 0) {
+      adjustCash(-feeAmount, {
+        note: `${mainNote} · Fee ${feeAmount}`,
+        type: 'profit_fee', kind: 'manual', entryCategory: 'profit_fee',
+        baseAmount: feeAmount, charges: 0, editable: true,
+      });
+    }
+    setProfitCashedBalance(readProfitCashedOut() + payoutAmount);
+    syncProfitBookedWithLedger();
+    return afterPayout;
+  }
+
+  const currentProfit = readProfitCashedOut();
+  if (currentProfit < payoutAmount) {
+    showCashAlert('Not enough profit cashed balance.');
+    return readCash();
+  }
+  const afterDeposit = adjustCash(payoutAmount, {
+    note: `${mainNote} · Net ${payoutAmount}`,
+    type: 'profit_in', kind: 'manual', entryCategory: 'profit',
+    baseAmount: payoutAmount, charges: 0, editable: true,
+    profitDelta: -payoutAmount,
   });
   if (feeAmount > 0) {
     adjustCash(-feeAmount, {
-      note: `${mainNote} · Fee ${feeAmount}`, type: 'profit_fee',
-      kind: 'manual', entryCategory: 'profit_fee', baseAmount: feeAmount, charges: 0, editable: true,
+      note: `${mainNote} · Fee ${feeAmount}`,
+      type: 'profit_fee_in', kind: 'manual', entryCategory: 'profit_fee',
+      baseAmount: feeAmount, charges: 0, editable: true,
     });
   }
+  setProfitCashedBalance(currentProfit - payoutAmount);
   syncProfitBookedWithLedger();
-  return afterPayout;
-}
-
-function readProfitCashedOut() {
-  const fromLedger = readLedger().reduce((sum, row) => {
-    if (row.entryCategory !== 'profit') return sum;
-    const amount = Number(row.baseAmount || Math.abs(Number(row.delta || 0)));
-    return row.type === 'profit_out' ? sum + amount : sum;
-  }, 0);
-  return readProfitCashedBase() + fromLedger;
+  return afterDeposit;
 }
 
 function readProfitSeries() {
@@ -293,7 +371,7 @@ window.PmsCapital = {
   CASH_KEY, LEDGER_KEY, readCash, setCash, adjustCash, readLedger,
   updateLedgerEntry, deleteLedgerEntry, clearLedgerHistory,
   investedCapital, addProfitCashEntry, computeProfitDelta,
-  readProfitCashedOut, showCashAlert,
+  readProfitCashedOut, adjustProfitCashed, showCashAlert,
   updateWidgets: () => window.dispatchEvent(new CustomEvent('pms-cash-updated')),
 };
 
