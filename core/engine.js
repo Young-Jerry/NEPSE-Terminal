@@ -89,6 +89,7 @@ const CASH_KEY = 'cashBalanceV1';
 const LEDGER_KEY = 'cashLedgerV1';
 const PROFIT_OUT_FEE = 8;
 const PROFIT_BOOK_SERIES_KEY = 'profitBookedSeriesV1';
+const PROFIT_CASHED_BASE_KEY = 'profitCashedBaseV1';
 const PROFIT_BOOK_START_DATE = '2026-04-06';
 const PROFIT_BOOK_START_VALUE = 5070;
 
@@ -171,6 +172,7 @@ function deleteLedgerEntry(id) {
 }
 
 function clearLedgerHistory() {
+  setProfitCashedBase(readProfitCashedOut());
   saveLedger([]);
   syncProfitBookedWithLedger();
   window.dispatchEvent(new CustomEvent('pms-cash-updated', { detail: { cash: readCash() } }));
@@ -191,6 +193,17 @@ function computeProfitDelta(direction, amount) {
   const baseAmount = Math.round(Number(amount || 0));
   if (!Number.isFinite(baseAmount) || baseAmount <= 0) return 0;
   return direction === 'out' ? -baseAmount : 0;
+}
+
+function readProfitCashedBase() {
+  const value = Math.round(Number(localStorage.getItem(PROFIT_CASHED_BASE_KEY) || 0));
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function setProfitCashedBase(value) {
+  const safe = Math.max(0, Math.round(Number(value || 0)));
+  localStorage.setItem(PROFIT_CASHED_BASE_KEY, String(safe));
+  return safe;
 }
 
 function addProfitCashEntry(direction, amount, note = '') {
@@ -214,11 +227,12 @@ function addProfitCashEntry(direction, amount, note = '') {
 }
 
 function readProfitCashedOut() {
-  return readLedger().reduce((sum, row) => {
+  const fromLedger = readLedger().reduce((sum, row) => {
     if (row.entryCategory !== 'profit') return sum;
     const amount = Number(row.baseAmount || Math.abs(Number(row.delta || 0)));
     return row.type === 'profit_out' ? sum + amount : sum;
   }, 0);
+  return readProfitCashedBase() + fromLedger;
 }
 
 function readProfitSeries() {

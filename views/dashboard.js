@@ -139,7 +139,7 @@
       <div class="kpi-strip dash-row">
         <div class="kpi-card kpi-roi" id="dash-kpi-roi">
           <div class="kpi-label">EXITED TRADE BALANCE</div>
-          <div class="kpi-value kpi-value-tight ${plCls(realized.totalProfit)}">${plSign(realized.totalProfit)}${fmtRs(realized.totalProfit, 0)} (${plSign(realized.roi)}${fmtPct(realized.roi, 2)})</div>
+          <div class="kpi-value kpi-value-tight ${plCls(realized.totalProfit)}">${plSign(realized.totalProfit)}${fmtRs(realized.totalProfit, 0)}</div>
         </div>
 
         <div class="kpi-card kpi-nw" id="dash-kpi-nw">
