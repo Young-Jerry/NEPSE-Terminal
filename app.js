@@ -6,6 +6,7 @@
   // ── ROUTE CONFIG ─────────────────────────────────────────────────
   const ROUTES = {
     dashboard:  { title: 'Dashboard',      render: c => window._renderDashboard(c) },
+    earnings:   { title: 'Earnings',       render: c => window._renderEarnings(c) },
     trades:     { title: 'Trades',         render: c => window._renderTrades(c) },
     longterm:   { title: 'Long-Term',      render: c => window._renderLongTerm(c) },
     sip:        { title: 'SIP System',     render: c => window._renderSip(c) },
@@ -39,7 +40,6 @@
   const ltpStatus        = document.getElementById('ltpStatus');
   const privacyToggleBtn = document.getElementById('privacyToggleBtn');
   const rsToggleBtn      = document.getElementById('rsToggleBtn');
-  const themeToggleBtn   = document.getElementById('themeToggleBtn');
   const calcPopupBtn     = document.getElementById('calcPopupBtn');
   const calcFloat        = document.getElementById('calcFloat');
 
@@ -63,7 +63,7 @@
   const SIP_DUE_DAY_KEY = 'pms_sip_due_day_v1';
   let privacyEnabled = localStorage.getItem(PRIVACY_KEY) === '1';
   let rsPrefixEnabled = localStorage.getItem(RS_PREFIX_KEY) !== '0';
-  let currentTheme = localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+  let currentTheme = 'dark';
 
   function maskDigits(text) {
     return String(text || '').replace(/\d/g, 'X');
@@ -193,13 +193,8 @@
     currentTheme = theme === 'dark' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', currentTheme);
     localStorage.setItem(THEME_KEY, currentTheme);
-    if (themeToggleBtn) {
-      themeToggleBtn.textContent = currentTheme === 'dark' ? '☀' : '☾';
-      themeToggleBtn.title = currentTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
-      themeToggleBtn.setAttribute('aria-label', themeToggleBtn.title);
-    }
   }
-  if (themeToggleBtn) themeToggleBtn.addEventListener('click', () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark'));
+  localStorage.setItem(THEME_KEY, 'dark');
   applyTheme(currentTheme);
 
   // ── FLOATING CALCULATOR ─────────────────────────────────────────

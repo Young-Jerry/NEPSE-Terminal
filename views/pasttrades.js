@@ -82,6 +82,7 @@ function renderPastTrades(container) {
             <th data-sort="netSoldTotal">Receivable After Tax</th>
             <th data-sort="holdingDays">Days</th>
             <th data-sort="perDayProfit">Per Day Profit</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="pt-tbody"></tbody>
@@ -205,7 +206,7 @@ function renderPastTrades(container) {
       .sort(sortExited);
 
     tbody.innerHTML = exited.length ? '' : `
-      <tr><td colspan="11">
+      <tr><td colspan="12">
         <div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-title">No closed trades</div><div class="empty-state-sub">Exit positions using the form above.</div></div>
       </td></tr>`;
 
@@ -230,7 +231,90 @@ function renderPastTrades(container) {
         if (cls) td.className = cls;
         tr.appendChild(td);
       });
+      const actionTd = document.createElement('td');
+      actionTd.className = 'actions-td';
+      actionTd.innerHTML = `
+        <div class="actions-cell">
+          <button class="btn-ghost" data-edit="${row.id}">✏️</button>
+          <button class="btn-ghost" data-del="${row.id}">🗑️</button>
+        </div>
+      `;
+      tr.appendChild(actionTd);
       tbody.appendChild(tr);
+    });
+    tbody.querySelectorAll('[data-del]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-del');
+        const rows = readJsonArr(EXITED_KEY).filter((row) => row.id !== id);
+        localStorage.setItem(EXITED_KEY, JSON.stringify(rows));
+        renderExited();
+        renderMetrics();
+      });
+    });
+    tbody.querySelectorAll('[data-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => openEditClosedTrade(btn.getAttribute('data-edit')));
+    });
+  }
+
+  function openEditClosedTrade(id) {
+    const rows = readJsonArr(EXITED_KEY);
+    const idx = rows.findIndex((row) => row.id === id);
+    if (idx < 0) return;
+    const row = rows[idx];
+    Modal.open({
+      title: 'Edit Closed Trade',
+      body: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Sell Price</label>
+            <input type="number" class="form-input" id="pt-edit-sell" min="0.01" step="0.01" value="${Number(row.soldPrice || 0)}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Holding Days</label>
+            <input type="number" class="form-input" id="pt-edit-days" min="0" step="1" value="${Math.floor(Number(row.holdingDays || 0))}" />
+          </div>
+        </div>
+      `,
+      footer: `<button class="btn-secondary" id="pt-edit-cancel">Cancel</button><button class="btn-primary" id="pt-edit-save">Save</button>`,
+    });
+    const box = document.getElementById('modalBox');
+    box.querySelector('#pt-edit-cancel')?.addEventListener('click', Modal.close);
+    box.querySelector('#pt-edit-save')?.addEventListener('click', () => {
+      const sellPrice = Number(box.querySelector('#pt-edit-sell')?.value || 0);
+      const holdingDays = Math.floor(Number(box.querySelector('#pt-edit-days')?.value || 0));
+      if (!isFinite(sellPrice) || sellPrice <= 0 || !isFinite(holdingDays) || holdingDays < 0) return;
+      const prevShort = Math.floor(Number(row.holdingDays || 0)) <= 365;
+      const nextShort = holdingDays <= 365;
+      if (prevShort !== nextShort) {
+        Modal.open({
+          title: 'Holding Period Rule',
+          body: '<p style="color:var(--text-secondary);">Short-term and long-term categories cannot be switched. Keep the holding days within the same category.</p>',
+          footer: `<button class="btn-primary" onclick="Modal.close()">OK</button>`,
+        });
+        return;
+      }
+      const calc = window.PmsTradeMath.calculateRoundTrip({
+        buyPrice: Number(row.buyPrice || 0),
+        soldPrice: sellPrice,
+        qty: Number(row.qty || 0),
+        holdingDays,
+      });
+      rows[idx] = {
+        ...row,
+        soldPrice,
+        holdingDays,
+        total: sellPrice * Number(row.qty || 0),
+        soldTotal: Number(calc.realizedAmount || 0),
+        netSoldTotal: Number(calc.netRealizedAmount || calc.realizedAmount || 0),
+        grossProfit: Number(calc.grossProfit || 0),
+        capitalGainTax: Number(calc.capitalGainTax || 0),
+        profit: Number(calc.netProfit || calc.profit || 0),
+        perDayProfit: holdingDays > 0 ? Number(calc.netProfit || calc.profit || 0) / holdingDays : Number(calc.netProfit || calc.profit || 0),
+      };
+      localStorage.setItem(EXITED_KEY, JSON.stringify(rows));
+      Modal.close();
+      renderExited();
+      renderMetrics();
     });
   }
 
