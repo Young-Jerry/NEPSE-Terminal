@@ -17,9 +17,9 @@
   --text-muted:     #67789b;
   --text-dim:       #8d9dbc;
 
-  --green:          #9598a1;
-  --green-dim:      rgba(149,152,161,.18);
-  --green-mid:      #9598a1;
+  --green:          #74b88b;
+  --green-dim:      rgba(116,184,139,.18);
+  --green-mid:      #74b88b;
   --red:            #da4d4d;
   --red-dim:        rgba(222,122,143,.16);
   --red-mid:        #cb617a;
@@ -1779,12 +1779,12 @@ tbody tr:hover {
   justify-content: center;
 }
 .tb-btn-textual {
-  justify-content: flex-start;
-  gap: 5px;
+  justify-content: center;
+  gap: 0;
   font-size: 9px;
 }
 .tb-btn-textual span {
-  display: inline-block;
+  display: none;
 }
 .tb-btn-mark { display: inline-flex; align-items: center; gap: 4px; }
 .tb-mark { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); }

@@ -22,7 +22,7 @@
     return window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : out;
   }
   function plCls(v) { return Number(v) > 0 ? 'profit' : Number(v) < 0 ? 'loss' : ''; }
-  function plSign(v) { return Number(v) > 0 ? '+' : ''; }
+  function plSign() { return ''; }
   function hasFinite(v) { return Number.isFinite(Number(v)); }
 
   function readArr(key) {
