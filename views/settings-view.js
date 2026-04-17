@@ -122,6 +122,23 @@ function renderSettings(container) {
           <button class="btn-danger" id="settings-set-cash-btn">Set</button>
         </div>
       </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Profit Cashed Balance</div>
+          <div class="settings-row-sub">Current Profit Cashed balance and overwrite control.</div>
+        </div>
+        <span class="mono value-blue" id="settings-profit-val" style="font-size:14px;font-weight:700;"></span>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label">Override Profit Cashed</div>
+          <div class="settings-row-sub">Manually set profit cashed balance (bypasses normal flow).</div>
+        </div>
+        <div class="toolbar">
+          <input type="number" class="form-input" id="settings-profit-input" placeholder="5000" min="0" step="1" style="width:120px;" />
+          <button class="btn-danger" id="settings-set-profit-btn">Set</button>
+        </div>
+      </div>
     </div>
 
 
@@ -192,6 +209,8 @@ function renderSettings(container) {
   const updateCashDisplay = () => {
     const el = container.querySelector('#settings-cash-val');
     if (el && window.PmsCapital) el.textContent = currencyInt(window.PmsCapital.readCash());
+    const profitEl = container.querySelector('#settings-profit-val');
+    if (profitEl && window.PmsCapital) profitEl.textContent = currencyInt(window.PmsCapital.readProfitCashedOut());
   };
   const updateSipDueDisplay = () => {
     const current = container.querySelector('#settings-sip-due-current');
@@ -287,6 +306,21 @@ function renderSettings(container) {
       message: `Set cash balance to ${currencyInt(val)}? This bypasses the ledger.`,
       confirmText: 'Override',
       onConfirm: () => { window.PmsCapital.setCash(val); updateCashDisplay(); showStatus('Cash balance updated ✓'); },
+    });
+  });
+
+  container.querySelector('#settings-set-profit-btn').addEventListener('click', () => {
+    const val = Math.round(Number(container.querySelector('#settings-profit-input').value));
+    if (!isFinite(val) || val < 0) return;
+    Modal.confirm({
+      title: 'Override Profit Cashed',
+      message: `Set Profit Cashed balance to ${currencyInt(val)}? This bypasses normal ledger math.`,
+      confirmText: 'Override',
+      onConfirm: () => {
+        window.PmsCapital.setProfitCashedBalance(val);
+        updateCashDisplay();
+        showStatus('Profit Cashed balance updated ✓');
+      },
     });
   });
 

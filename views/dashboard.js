@@ -125,6 +125,9 @@
     const bookedProfit = window.PmsCapital && window.PmsCapital.readProfitCashedOut
       ? Number(window.PmsCapital.readProfitCashedOut() || 0)
       : 0;
+    const earnings = window.PmsEarnings && window.PmsEarnings.computeSummary
+      ? window.PmsEarnings.computeSummary()
+      : { epd: 0 };
 
     const sipDueDay = readSipDueDay();
     const sipDays = daysUntilSipDueDay(sipDueDay);
@@ -138,7 +141,7 @@
     container.innerHTML = `
       <div class="kpi-strip dash-row">
         <div class="kpi-card kpi-roi" id="dash-kpi-roi">
-          <div class="kpi-label">EXITED TRADE BALANCE</div>
+          <div class="kpi-label">E. TRADE BALANCE</div>
           <div class="kpi-value kpi-value-tight ${plCls(realized.totalProfit)}">${plSign(realized.totalProfit)}${fmtRs(realized.totalProfit, 0)}</div>
         </div>
 
@@ -148,17 +151,17 @@
         </div>
 
         <div class="kpi-card kpi-pl" id="dash-kpi-ltg">
-          <div class="kpi-label">LONG TERM GAIN</div>
-          <div class="kpi-value mono profit">${fmtRs(longTermGain, 0)}</div>
+          <div class="kpi-label">EPD</div>
+          <div class="kpi-value mono neutral">${fmtRs(earnings.epd || 0, 2)}</div>
         </div>
 
         <div class="kpi-card kpi-cash" id="dash-kpi-cash">
-          <div class="kpi-label">CASH BALANCE</div>
+          <div class="kpi-label">CASH BALANACE</div>
           <div class="kpi-value cash-color mono">${fmtRs(Math.abs(cash), 0)}</div>
         </div>
 
         <div class="kpi-card kpi-booked" id="dash-kpi-booked">
-          <div class="kpi-label">BOOKED PROFITS</div>
+          <div class="kpi-label">PROFIT BALANCE</div>
           <div class="kpi-value mono ${plCls(bookedProfit)}">${plSign(bookedProfit)}${fmtRs(bookedProfit, 0)}</div>
         </div>
 

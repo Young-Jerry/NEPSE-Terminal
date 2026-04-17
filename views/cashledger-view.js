@@ -56,8 +56,8 @@ function renderCashLedger(container) {
             <div class="form-group">
               <label class="form-label">Type</label>
               <select class="form-select" name="profitType">
-                <option value="in">Profit Cashed In</option>
-                <option value="out" selected>Profit Cashed Out</option>
+                <option value="in">Invest Back</option>
+                <option value="out" selected>Withdraw</option>
               </select>
             </div>
             <div class="form-group">
@@ -66,14 +66,14 @@ function renderCashLedger(container) {
             </div>
             <div class="form-group">
               <label class="form-label">Note</label>
-              <input type="text" class="form-input" name="note" value="Profit Cashed Out" />
+              <input type="text" class="form-input" name="note" value="Withdraw" />
             </div>
             <div class="form-group" style="align-self:end;">
               <button type="submit" class="btn-primary" style="width:100%;">Save</button>
             </div>
           </div>
           <div style="font-size:10px;color:var(--text-muted);margin-top:8px;">
-            * Profit Cashed In includes Rs 2 fee, Profit Cashed Out includes Rs 8 fee.
+            * Invest Back includes Rs 2 fee, Withdraw includes Rs 10 fee.
           </div>
         </form>
       </div>
@@ -112,7 +112,7 @@ function renderCashLedger(container) {
   if (profitTypeEl) {
     profitTypeEl.addEventListener('change', () => {
       const noteInput = container.querySelector('#ledger-profit-form input[name="note"]');
-      if (noteInput) noteInput.value = profitTypeEl.value === 'in' ? 'Profit Cashed In' : 'Profit Cashed Out';
+      if (noteInput) noteInput.value = profitTypeEl.value === 'in' ? 'Invest Back' : 'Withdraw';
     });
   }
 
@@ -140,7 +140,7 @@ function renderCashLedger(container) {
     profitForm.reset();
     const typeEl = profitForm.querySelector('select[name="profitType"]');
     if (typeEl) typeEl.value = 'out';
-    profitForm.querySelector('input[name="note"]').value = 'Profit Cashed Out';
+    profitForm.querySelector('input[name="note"]').value = 'Withdraw';
     render();
   });
 
@@ -184,7 +184,7 @@ function renderCashLedger(container) {
       const isCredit    = Number(entry.delta) >= 0;
       const isProfit    = String(entry.entryCategory || '') === 'profit';
       const isProfitFee = String(entry.entryCategory || '') === 'profit_fee';
-      const typeLabel   = entry.type === 'profit_in' ? 'Profit Cashed In' : isProfit ? 'Profit Cashed Out' : isProfitFee ? 'Profit Cash Fee' : (isCredit ? 'Cash In' : 'Cash Out');
+      const typeLabel   = entry.type === 'profit_in' ? 'Invest Back' : isProfit ? 'Withdraw' : isProfitFee ? 'Profit Cash Fee' : (isCredit ? 'Cash In' : 'Cash Out');
       const category    = isProfit || isProfitFee ? 'Profit Entry' : 'Transaction';
       const signedAmt = isProfit ? (entry.type === 'profit_in' ? -Math.abs(Number(entry.baseAmount || 0)) : Math.abs(Number(entry.baseAmount || 0))) : Number(entry.delta || 0);
       const amtClass = (isProfit ? signedAmt > 0 : isCredit) ? 'ledger-type-credit' : 'ledger-type-debit';

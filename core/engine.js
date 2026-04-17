@@ -87,7 +87,7 @@ window.PmsTradeMath = {
 // ─── CAPITAL MANAGER (preserved from capital-manager.js) ──────────────────
 const CASH_KEY = 'cashBalanceV1';
 const LEDGER_KEY = 'cashLedgerV1';
-const PROFIT_OUT_FEE = 8;
+const PROFIT_OUT_FEE = 10;
 const PROFIT_IN_FEE = 2;
 const PROFIT_CASHED_BAL_KEY = 'profitCashedBalanceV1';
 const PROFIT_BOOK_SERIES_KEY = 'profitBookedSeriesV1';
@@ -269,7 +269,7 @@ function addProfitCashEntry(direction, amount, note = '') {
   if (!Number.isFinite(baseAmount) || baseAmount <= 0) return readCash();
   const feeAmount = Math.min(mode === 'in' ? PROFIT_IN_FEE : PROFIT_OUT_FEE, baseAmount);
   const payoutAmount = Math.max(0, baseAmount - feeAmount);
-  const mainNote = String(note || '').trim() || (mode === 'in' ? 'Profit Cashed In' : 'Profit Cashed Out');
+  const mainNote = String(note || '').trim() || (mode === 'in' ? 'Invest Back' : 'Withdraw');
 
   if (mode === 'out') {
     const afterPayout = adjustCash(-payoutAmount, {
@@ -371,7 +371,7 @@ window.PmsCapital = {
   CASH_KEY, LEDGER_KEY, readCash, setCash, adjustCash, readLedger,
   updateLedgerEntry, deleteLedgerEntry, clearLedgerHistory,
   investedCapital, addProfitCashEntry, computeProfitDelta,
-  readProfitCashedOut, adjustProfitCashed, showCashAlert,
+  readProfitCashedOut, adjustProfitCashed, setProfitCashedBalance, showCashAlert,
   updateWidgets: () => window.dispatchEvent(new CustomEvent('pms-cash-updated')),
 };
 
@@ -380,6 +380,100 @@ window.PmsProfitBook = {
   START_DATE: PROFIT_BOOK_START_DATE,
   readSeries: ensureProfitSeries,
   syncWithLedger: syncProfitBookedWithLedger,
+};
+
+// ─── EARNINGS ENGINE ─────────────────────────────────────────────────────
+const EARNINGS_KEY = 'earningsStateV1';
+
+function readEarningsState() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(EARNINGS_KEY) || '{}');
+    const passive = Number(parsed.passiveIncome || 0);
+    const oneTime = Array.isArray(parsed.oneTimeIncomes) ? parsed.oneTimeIncomes : [];
+    return {
+      passiveIncome: Number.isFinite(passive) && passive >= 0 ? passive : 0,
+      oneTimeIncomes: oneTime.map((row) => ({
+        id: row.id || crypto.randomUUID(),
+        month: String(row.month || ''),
+        amount: Math.max(0, Math.round(Number(row.amount || 0))),
+        note: String(row.note || '').trim(),
+        createdAt: row.createdAt || new Date().toISOString(),
+      })).filter((row) => /^\d{4}-\d{2}$/.test(row.month) && row.amount > 0),
+    };
+  } catch {
+    return { passiveIncome: 0, oneTimeIncomes: [] };
+  }
+}
+
+function saveEarningsState(nextState) {
+  localStorage.setItem(EARNINGS_KEY, JSON.stringify(nextState));
+  window.dispatchEvent(new CustomEvent('pms-earnings-updated'));
+}
+
+function monthKeyFromDate(isoString) {
+  return String(isoString || '').slice(0, 7);
+}
+
+function monthlyOneTimeTotal(state, monthKey = monthKeyFromDate(new Date().toISOString())) {
+  return (state.oneTimeIncomes || [])
+    .filter((row) => row.month === monthKey)
+    .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+}
+
+function daysBetween(startIso, endDate = new Date()) {
+  const start = new Date(startIso || endDate.toISOString());
+  const end = new Date(endDate);
+  const diff = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return Number.isFinite(diff) && diff > 0 ? diff : 0;
+}
+
+function getDailyRealizedContrib(exited) {
+  return exited.reduce((sum, row) => {
+    const holdingDays = Math.max(1, Math.floor(Number(row.holdingDays || 0)));
+    const elapsed = daysBetween(row.exitedAt);
+    const perDay = Number(row.profit || 0) / (holdingDays + elapsed);
+    return sum + perDay;
+  }, 0);
+}
+
+function getLargestTradeDayProfit(exited) {
+  if (!exited.length) return 0;
+  return exited.reduce((best, row) => {
+    const holdingDays = Math.max(1, Math.floor(Number(row.holdingDays || 0)));
+    const perDay = Number(row.profit || 0) / holdingDays;
+    return perDay > best ? perDay : best;
+  }, 0);
+}
+
+function computeEarningsSummary() {
+  const state = readEarningsState();
+  const monthKey = monthKeyFromDate(new Date().toISOString());
+  const oneTimeMonth = monthlyOneTimeTotal(state, monthKey);
+  const passiveMonthly = Number(state.passiveIncome || 0);
+  const monthIncome = passiveMonthly + oneTimeMonth;
+  const basePerDay = monthIncome / 30;
+  const exited = readJsonRows('exitedTradesV2');
+  const realizedDaily = getDailyRealizedContrib(exited);
+  const defaultLargestDay = getLargestTradeDayProfit(exited);
+  const epd = Math.max(defaultLargestDay, basePerDay) + realizedDaily;
+  return {
+    passiveMonthly,
+    oneTimeMonth,
+    monthIncome,
+    yearIncome: monthIncome * 12,
+    basePerDay,
+    epd,
+    largestTradeDayProfit: defaultLargestDay,
+    realizedDaily,
+    oneTimeIncomes: state.oneTimeIncomes,
+  };
+}
+
+window.PmsEarnings = {
+  KEY: EARNINGS_KEY,
+  readState: readEarningsState,
+  saveState: saveEarningsState,
+  computeSummary: computeEarningsSummary,
 };
 
 // ─── APP STATE (single source of truth) ───────────────────────────────────

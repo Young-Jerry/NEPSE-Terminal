@@ -288,7 +288,7 @@ function renderSip(container) {
     const sips = activeSip === 'ALL_SIP' ? state.sips : [activeSip];
     const cols = activeSip === 'ALL_SIP'
       ? ['SIP', 'Units', 'WACC', 'Amt', 'CurrentNAV', 'CurrentValue', 'P/L']
-      : ['Date','Units','NAV','Amount','Current NAV','Current Value','P/L'];
+      : ['Date','Units','NAV','Amount','Current NAV','Current Value','P/L',''];
 
     cols.forEach(c => { const th = document.createElement('th'); th.textContent = c; thead.appendChild(th); });
 
@@ -341,7 +341,13 @@ function renderSip(container) {
 
         tr.style.cursor = 'pointer';
         tr.title = 'View installment details';
-        tr.addEventListener('click', () => showInstallmentDetail(sipName, row, currentNav));
+        tr.addEventListener('click', (evt) => {
+          if (evt.target && evt.target.closest('[data-sip-delete]')) return;
+          showInstallmentDetail(sipName, row, currentNav);
+        });
+        const actionTd = document.createElement('td');
+        actionTd.innerHTML = `<button class="btn-ghost" data-sip-delete="${row.id}" title="Delete entry">🗑️</button>`;
+        tr.appendChild(actionTd);
         tbody.appendChild(tr);
       });
     });
@@ -354,6 +360,29 @@ function renderSip(container) {
       tr.appendChild(td);
       tbody.appendChild(tr);
     }
+
+    tbody.querySelectorAll('[data-sip-delete]').forEach((btn) => {
+      btn.addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        const targetId = btn.getAttribute('data-sip-delete');
+        const row = (state.records[activeSip] || []).find((r) => r.id === targetId);
+        if (!row) return;
+        const amount = Math.floor(Number(row.units || 0)) * Number(row.nav || 0);
+        Modal.confirm({
+          title: 'Delete SIP installment',
+          message: `Delete installment dated ${row.date} from ${activeSip}?`,
+          confirmText: 'Delete',
+          onConfirm: () => {
+            state.records[activeSip] = (state.records[activeSip] || []).filter((r) => r.id !== row.id);
+            if (window.PmsCapital) {
+              if (row.fundingSource === 'profit') window.PmsCapital.adjustProfitCashed(amount);
+              else window.PmsCapital.adjustCash(amount);
+            }
+            persist('Installment deleted.');
+          },
+        });
+      });
+    });
   }
 
   function showInstallmentDetail(sipName, row, currentNav) {
