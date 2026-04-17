@@ -54,7 +54,7 @@
   function pct(ltp, wacc) {
     if (!ltp || !wacc) return { text: '—', cls: 'wl-flat' };
     const v = ((ltp - wacc) / wacc) * 100;
-    const text = `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+    const text = `${v.toFixed(2)}%`;
     return { text: maskDigits(text), cls: v > 0 ? 'wl-up' : v < 0 ? 'wl-down' : 'wl-flat' };
   }
 

@@ -390,8 +390,19 @@ function readEarningsState() {
     const parsed = JSON.parse(localStorage.getItem(EARNINGS_KEY) || '{}');
     const passive = Number(parsed.passiveIncome || 0);
     const oneTime = Array.isArray(parsed.oneTimeIncomes) ? parsed.oneTimeIncomes : [];
+    const factoredDays = Math.floor(Number(parsed.factoredDays || 0));
+    const passiveHistory = Array.isArray(parsed.passiveHistory) ? parsed.passiveHistory : [];
     return {
       passiveIncome: Number.isFinite(passive) && passive >= 0 ? passive : 0,
+      factoredDays: Number.isFinite(factoredDays) && factoredDays > 0 && factoredDays % 30 === 0 ? factoredDays : null,
+      factoredDaysUpdatedAt: parsed.factoredDaysUpdatedAt || null,
+      passiveHistory: passiveHistory
+        .map((row) => ({
+          id: row.id || crypto.randomUUID(),
+          amount: Math.max(0, Math.round(Number(row.amount || 0))),
+          createdAt: row.createdAt || new Date().toISOString(),
+        }))
+        .filter((row) => row.amount >= 0),
       oneTimeIncomes: oneTime.map((row) => ({
         id: row.id || crypto.randomUUID(),
         month: String(row.month || ''),
@@ -427,22 +438,31 @@ function daysBetween(startIso, endDate = new Date()) {
   return Number.isFinite(diff) && diff > 0 ? diff : 0;
 }
 
-function getDailyRealizedContrib(exited) {
-  return exited.reduce((sum, row) => {
-    const holdingDays = Math.max(1, Math.floor(Number(row.holdingDays || 0)));
-    const elapsed = daysBetween(row.exitedAt);
-    const perDay = Number(row.profit || 0) / (holdingDays + elapsed);
-    return sum + perDay;
-  }, 0);
+function getLargestHoldingTrade(exited) {
+  if (!exited.length) return null;
+  return exited.reduce((best, row) => {
+    const hold = Math.max(0, Math.floor(Number(row.holdingDays || 0)));
+    const bestHold = Math.max(0, Math.floor(Number(best.holdingDays || 0)));
+    return hold > bestHold ? row : best;
+  }, exited[0]);
 }
 
-function getLargestTradeDayProfit(exited) {
-  if (!exited.length) return 0;
-  return exited.reduce((best, row) => {
-    const holdingDays = Math.max(1, Math.floor(Number(row.holdingDays || 0)));
-    const perDay = Number(row.profit || 0) / holdingDays;
-    return perDay > best ? perDay : best;
-  }, 0);
+function resolveFactoredDays(state, exited) {
+  const largestHoldingTrade = getLargestHoldingTrade(exited);
+  const largestHoldingDays = Math.max(0, Math.floor(Number(largestHoldingTrade?.holdingDays || 0)));
+  const hasAuto = largestHoldingDays > 0;
+  const hasManual = Number.isFinite(Number(state.factoredDays)) && Number(state.factoredDays) > 0;
+  const baseHoldingDays = hasAuto ? largestHoldingDays : (hasManual ? Number(state.factoredDays) : 30);
+  const anchorDate = hasAuto
+    ? (largestHoldingTrade?.exitedAt || new Date().toISOString())
+    : (state.factoredDaysUpdatedAt || new Date().toISOString());
+  const elapsedDays = daysBetween(anchorDate);
+  return {
+    baseHoldingDays,
+    effectiveHoldingDays: Math.max(1, Math.floor(baseHoldingDays + elapsedDays)),
+    largestHoldingDays,
+    usedAutoFactoredDays: hasAuto,
+  };
 }
 
 function computeEarningsSummary() {
@@ -451,20 +471,27 @@ function computeEarningsSummary() {
   const oneTimeMonth = monthlyOneTimeTotal(state, monthKey);
   const passiveMonthly = Number(state.passiveIncome || 0);
   const monthIncome = passiveMonthly + oneTimeMonth;
-  const basePerDay = monthIncome / 30;
   const exited = readJsonRows('exitedTradesV2');
-  const realizedDaily = getDailyRealizedContrib(exited);
-  const defaultLargestDay = getLargestTradeDayProfit(exited);
-  const epd = Math.max(defaultLargestDay, basePerDay) + realizedDaily;
+  const totalRealizedProfit = exited.reduce((sum, row) => sum + Number(row.profit || 0), 0);
+  const factored = resolveFactoredDays(state, exited);
+  const realizedDaily = totalRealizedProfit / Math.max(1, factored.effectiveHoldingDays);
+  const passiveDaily = passiveMonthly / 30;
+  const oneTimeDaily = oneTimeMonth / 30;
+  const epd = realizedDaily + passiveDaily + oneTimeDaily;
   return {
     passiveMonthly,
     oneTimeMonth,
     monthIncome,
     yearIncome: monthIncome * 12,
-    basePerDay,
     epd,
-    largestTradeDayProfit: defaultLargestDay,
     realizedDaily,
+    totalRealizedProfit,
+    factoredDays: factored.effectiveHoldingDays,
+    factoredDaysBase: factored.baseHoldingDays,
+    defaultFactoredDays: factored.largestHoldingDays,
+    usedAutoFactoredDays: factored.usedAutoFactoredDays,
+    passiveDaily,
+    oneTimeDaily,
     oneTimeIncomes: state.oneTimeIncomes,
   };
 }
