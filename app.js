@@ -5,13 +5,21 @@
 (() => {
   // ── ROUTE CONFIG ─────────────────────────────────────────────────
   const ROUTES = {
-    dashboard:  { title: 'Dashboard',      render: c => window._renderDashboard(c) },
-    trading:    { title: 'Trading',        render: c => window._renderTrading(c) },
-    trades:     { title: 'Trades',         render: c => window._renderTrades(c) },
-    forexmarkets:{ title: 'Forex Markets', render: c => window._renderForexMarkets(c) },
-    pasttrades: { title: 'Past Trades',    render: c => window._renderPastTrades(c) },
-    calculator: { title: 'Calculator',     render: c => window._renderCalculator(c) },
-    settings:   { title: 'Settings',       render: c => window._renderSettings(c) },
+    dashboard:   { title: 'Dashboard',             context: 'MAIN', render: c => window._renderDashboard(c) },
+    calendar:    { title: 'Performance Calendar',  context: 'MAIN', render: c => window._renderDashboard(c) },
+    journal:     { title: 'Journal Vault',         context: 'MAIN', render: c => window._renderTrades(c) },
+    execution:   { title: 'Execution',             context: 'TRADING', render: c => window._renderTrading(c) },
+    learning:    { title: 'Learning',              context: 'TRADING', render: c => window._renderForexMarkets(c) },
+    demoprogress:{ title: 'Demo Progress',         context: 'TRADING', render: c => window._renderPastTrades(c) },
+    propchallenge:{ title: 'Prop Challenge',       context: 'TRADING', render: c => window._renderCalculator(c) },
+    portfolio:   { title: 'Portfolio',             context: 'NEPSE', render: c => window._renderDashboard(c) },
+    watchlist:   { title: 'Watchlist',             context: 'NEPSE', render: c => window._renderDashboard(c) },
+    notes:       { title: 'Notes',                 context: 'NEPSE', render: c => window._renderTrades(c) },
+    discipline:  { title: 'Discipline',            context: 'LIFE OS', render: c => window._renderTrading(c) },
+    habits:      { title: 'Habits',                context: 'LIFE OS', render: c => window._renderPastTrades(c) },
+    reading:     { title: 'Reading',               context: 'LIFE OS', render: c => window._renderForexMarkets(c) },
+    skillprogress:{ title: 'Skill Progress',       context: 'LIFE OS', render: c => window._renderCalculator(c) },
+    settings:    { title: 'Settings',              context: 'SYSTEM', render: c => window._renderSettings(c) },
   };
 
   // Track which views have been rendered so Update Data can reset them
@@ -19,8 +27,7 @@
 
   // ── DOM REFS ──────────────────────────────────────────────────────
   const sidebar          = document.getElementById('sidebar');
-  const hamburger        = document.getElementById('hamburger');
-  const pageTitle        = document.getElementById('pageTitle');
+    const pageTitle        = document.getElementById('pageTitle');
   const statusDot        = document.getElementById('statusDot');
   const statusLabel      = document.getElementById('statusLabel');
   const statusTime       = document.getElementById('statusTime');
@@ -35,6 +42,11 @@
   const uploadDataBtn    = document.getElementById('uploadDataBtn');
   const dataFileInput    = document.getElementById('dataFileInput');
   const ltpStatus        = document.getElementById('ltpStatus');
+  const pageContext      = document.getElementById('pageContext');
+  const ktmTime          = document.getElementById('ktmTime');
+  const nyTime           = document.getElementById('nyTime');
+  const sessionIndicator = document.getElementById('sessionIndicator');
+  const themeToggleBtn   = document.getElementById('themeToggleBtn');
   const privacyToggleBtn = document.getElementById('privacyToggleBtn');
   const rsToggleBtn      = document.getElementById('rsToggleBtn');
   const calcPopupBtn     = document.getElementById('calcPopupBtn');
@@ -48,7 +60,6 @@
     if (backdrop && showBackdrop && window.innerWidth < 900) backdrop.classList.add('visible');
   }
 
-  if (hamburger) hamburger.style.display = 'none';
   if (backdrop) backdrop.style.display = 'none';
   openSidebar(false);
 
@@ -174,8 +185,9 @@
     document.documentElement.setAttribute('data-theme', currentTheme);
     localStorage.setItem(THEME_KEY, currentTheme);
   }
-  localStorage.setItem(THEME_KEY, 'dark');
+  currentTheme = localStorage.getItem(THEME_KEY) || 'dark';
   applyTheme(currentTheme);
+  if (themeToggleBtn) themeToggleBtn.addEventListener('click', () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark'));
 
   // ── FLOATING CALCULATOR ─────────────────────────────────────────
   const QUICK_CALC_HISTORY_KEY = 'pms_quick_calc_history_v1';
@@ -393,6 +405,7 @@
     });
 
     pageTitle.textContent = route.title.toUpperCase();
+    if (pageContext) pageContext.textContent = `${route.context || 'SYSTEM'} / ${route.title.toUpperCase()}`;
 
     // Only render if not rendered yet (or if marked dirty by updateData)
     if (!renderedViews.has(viewId) || container._dirty) {
@@ -412,11 +425,24 @@
     btn.addEventListener('click', () => navigate(btn.dataset.view));
   });
 
+  function updateTimeClocks() {
+    const now = new Date();
+    const ktm = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kathmandu' });
+    const ny = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/New_York' });
+    if (ktmTime) ktmTime.textContent = ktm;
+    if (nyTime) nyTime.textContent = ny;
+    const h = Number(now.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false, timeZone: 'America/New_York' }));
+    const session = h >= 8 && h < 17 ? 'NEW YORK OPEN' : h >= 3 && h < 8 ? 'LONDON' : 'ASIA';
+    if (sessionIndicator) sessionIndicator.textContent = `Session: ${session}`;
+  }
+  setInterval(updateTimeClocks, 30000);
+  updateTimeClocks();
+
   // ── MARKET CLOCK ──────────────────────────────────────────────────
   window.startMarketClock(({ status, time, label }) => {
-    statusDot.className       = `status-dot ${status}`;
-    statusLabel.textContent   = label;
-    statusTime.textContent    = time;
+    if (statusDot) statusDot.className = `status-dot ${status}`;
+    if (statusLabel) statusLabel.textContent = label;
+    if (statusTime) statusTime.textContent = time;
   });
 
   // ── CASH DISPLAY ──────────────────────────────────────────────────

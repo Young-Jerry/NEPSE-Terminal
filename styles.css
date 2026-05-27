@@ -2164,3 +2164,17 @@ tbody tr:hover {
 .privacy-on .wl-down {
   color: var(--text-muted) !important;
 }
+
+/* v5 architecture refinements */
+.nav-section { border-bottom: 1px solid var(--border); padding: 4px 0; }
+.nav-section summary { list-style: none; cursor: pointer; font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; color: var(--text-dim); padding: 6px 8px; }
+.nav-section summary::-webkit-details-marker { display: none; }
+.topbar { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.topbar-left { display: flex; align-items: baseline; gap: 10px; }
+.page-context { font-size: 10px; color: var(--text-muted); letter-spacing: .08em; }
+.topbar-center { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--text-muted); }
+.session-indicator { padding: 2px 6px; border: 1px solid var(--border); border-radius: 3px; color: var(--text-secondary); }
+.topbar-right { display: flex; align-items: center; gap: 6px; }
+.tb-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 3px; min-width: 28px; height: 24px; padding: 0 6px; font-size: 11px; }
+.fixed-layout-shell { padding: 10px; height: calc(100vh - var(--topbar-h)); overflow: hidden; }
+.fixed-layout-shell .view { height: 100%; overflow: auto; }
