@@ -1,18 +1,15 @@
 /**
- * NEPSE Terminal v4 — App Shell
+ * SM-Terminal v4 — App Shell
  * SPA router, sidebar nav, market clock, LTP handler, Update Data system
  */
 (() => {
   // ── ROUTE CONFIG ─────────────────────────────────────────────────
   const ROUTES = {
     dashboard:  { title: 'Dashboard',      render: c => window._renderDashboard(c) },
-    earnings:   { title: 'Earnings',       render: c => window._renderEarnings(c) },
+    trading:    { title: 'Trading',        render: c => window._renderTrading(c) },
     trades:     { title: 'Trades',         render: c => window._renderTrades(c) },
-    longterm:   { title: 'Long-Term',      render: c => window._renderLongTerm(c) },
-    sip:        { title: 'SIP System',     render: c => window._renderSip(c) },
+    forexmarkets:{ title: 'Forex Markets', render: c => window._renderForexMarkets(c) },
     pasttrades: { title: 'Past Trades',    render: c => window._renderPastTrades(c) },
-    cashledger: { title: 'Cash Ledger',    render: c => window._renderCashLedger(c) },
-    allocation: { title: 'Allocation',     render: c => window._renderAllocation(c) },
     calculator: { title: 'Calculator',     render: c => window._renderCalculator(c) },
     settings:   { title: 'Settings',       render: c => window._renderSettings(c) },
   };
@@ -27,7 +24,6 @@
   const statusDot        = document.getElementById('statusDot');
   const statusLabel      = document.getElementById('statusLabel');
   const statusTime       = document.getElementById('statusTime');
-  const headerCash       = document.getElementById('headerCash');
   const headerTargetValue = document.getElementById('headerTargetValue');
   const headerTargetFill = document.getElementById('headerTargetFill');
   const alertBar         = document.getElementById('alertBar');
@@ -61,8 +57,7 @@
   const PRIVACY_KEY = 'pms_privacy_mode_v1';
   const RS_PREFIX_KEY = 'pms_show_rs_prefix_v1';
   const THEME_KEY = 'pms_theme_v1';
-  const SIP_DUE_DAY_KEY = 'pms_sip_due_day_v1';
-  let privacyEnabled = localStorage.getItem(PRIVACY_KEY) === '1';
+    let privacyEnabled = localStorage.getItem(PRIVACY_KEY) === '1';
   let rsPrefixEnabled = localStorage.getItem(RS_PREFIX_KEY) !== '0';
   let currentTheme = 'dark';
 
@@ -170,22 +165,6 @@
     setRsPrefixEnabled: setRsPrefixMode,
   };
 
-  window.PmsSettings = {
-    getSipDueDay: () => {
-      const day = Number(localStorage.getItem(SIP_DUE_DAY_KEY));
-      return Number.isInteger(day) && day >= 1 && day <= 28 ? day : null;
-    },
-    setSipDueDay: (day) => {
-      if (day == null || day === '') {
-        localStorage.removeItem(SIP_DUE_DAY_KEY);
-      } else {
-        const parsed = Math.floor(Number(day));
-        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 28) throw new Error('Due day must be between 1 and 28.');
-        localStorage.setItem(SIP_DUE_DAY_KEY, String(parsed));
-      }
-      window.dispatchEvent(new CustomEvent('pms-sip-due-day-changed'));
-    },
-  };
 
   if (privacyToggleBtn) privacyToggleBtn.addEventListener('click', () => setPrivacyMode(!privacyEnabled));
   if (rsToggleBtn) rsToggleBtn.addEventListener('click', () => setRsPrefixMode(!rsPrefixEnabled));
