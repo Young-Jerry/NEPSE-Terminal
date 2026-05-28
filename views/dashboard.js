@@ -114,125 +114,20 @@
   function renderDashboard(container) {
     const totals = window.Analytics ? window.Analytics.getPortfolioTotals() : { total: 0, trades: { pl: 0, invested: 0, value: 0 }, longterm: { pl: 0, invested: 0, value: 0 }, sip: { pl: 0 } };
     const cash = window.PmsCapital ? window.PmsCapital.readCash() : 0;
-    const realized = getRealizedRoi();
-    const longTermGain = Math.abs(Number(totals.longterm.value || 0) - Number(totals.longterm.invested || 0));
-    const tradeSort = container._tradeSort || { key: 'script', dir: 'asc' };
-    const longSort = container._longSort || { key: 'script', dir: 'asc' };
-    const tradeFilter = container._tradeFilter || '';
-    const longFilter = container._longFilter || '';
-    const topTrades = getTopNBySort('trades', tradeSort, 3, tradeFilter, 'trade');
-    const topLong = getTopNBySort('longterm', longSort, 3, longFilter, 'long');
-    const bookedProfit = window.PmsCapital && window.PmsCapital.readProfitCashedOut
-      ? Number(window.PmsCapital.readProfitCashedOut() || 0)
-      : 0;
-    const earnings = window.PmsEarnings && window.PmsEarnings.computeSummary
-      ? window.PmsEarnings.computeSummary()
-      : { epd: 0 };
-
-    const sipDueDay = readSipDueDay();
-    const sipDays = daysUntilSipDueDay(sipDueDay);
-    const sipProg = sipDays == null ? 0 : Math.max(0, Math.min(100, ((31 - sipDays) / 31) * 100));
-    const sipRoiCards = buildSipRoiCards();
-    const sipEntryMonths = getSipEntryMonths();
-    const sipEntryChips = sipEntryMonths.length
-      ? sipEntryMonths.map((entry) => `<div class="sip-meta-chip"><span>${escHtml(entry.name)} ENTRIES</span><strong>${entry.months} Months</strong></div>`).join('')
-      : '<div class="sip-meta-chip"><span>SIP ENTRIES</span><strong>0 Months</strong></div>';
-
-    container.innerHTML = `
-      <div class="kpi-strip dash-row">
-        <div class="kpi-card kpi-roi" id="dash-kpi-roi">
-          <div class="kpi-label">E. TRADE BALANCE</div>
-          <div class="kpi-value kpi-value-tight ${plCls(realized.totalProfit)}">${plSign(realized.totalProfit)}${fmtRs(realized.totalProfit, 0)}</div>
-        </div>
-
-        <div class="kpi-card kpi-nw" id="dash-kpi-nw">
-          <div class="kpi-label">NET WORTH</div>
-          <div class="kpi-value neutral mono">${fmtRs(Number(totals.total || 0), 0)}</div>
-        </div>
-
-        <div class="kpi-card kpi-pl" id="dash-kpi-ltg">
-          <div class="kpi-label">EPD</div>
-          <div class="kpi-value mono neutral">${fmtRs(earnings.epd || 0, 2)}</div>
-        </div>
-
-        <div class="kpi-card kpi-cash" id="dash-kpi-cash">
-          <div class="kpi-label">CASH BALANACE</div>
-          <div class="kpi-value cash-color mono">${fmtRs(Math.abs(cash), 0)}</div>
-        </div>
-
-        <div class="kpi-card kpi-booked" id="dash-kpi-booked">
-          <div class="kpi-label">PROFIT BALANCE</div>
-          <div class="kpi-value mono ${plCls(bookedProfit)}">${plSign(bookedProfit)}${fmtRs(bookedProfit, 0)}</div>
-        </div>
-
-      </div>
-
-      <div class="info-strip dash-row">
-        <div class="info-card" id="dash-watchlist-panel" style="padding:0;overflow:hidden;"></div>
-        <div class="info-card" id="dash-sip-card">
-          <div class="info-card-title" style="margin-bottom:0;">SIP DUE SUMMARY</div>
-          <div class="sip-countdown">
-            <div class="sip-days">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : (sipDays == null ? 'NOT GIVEN' : (sipDays === 0 ? 'TODAY' : sipDays))}</div>
-            <div class="sip-label">${window.PmsPrivacy && window.PmsPrivacy.isEnabled && window.PmsPrivacy.isEnabled() ? maskValue() : (sipDays == null ? 'DAYS UNTIL ?TH' : (sipDays === 0 ? 'INVEST NOW' : `DAY${sipDays !== 1 ? 'S' : ''} UNTIL ${sipDueDay}TH`))}</div>
-            <div class="sip-bar"><div class="sip-bar-fill" style="width:${sipProg}%;"></div></div>
-          </div>
-          <div class="sip-meta-row">
-            ${sipEntryChips}
-          </div>
-          <div class="dash-sip-roi-grid">${sipRoiCards}</div>
-        </div>
-      </div>
-
-      <div class="portfolio-grid dash-row">
-        <div class="pf-table-card">
-          <div class="pf-table-header"><div class="pf-table-title">ACTIVE TRADES</div><input type="text" class="search-input dash-filter" id="dash-trade-filter" placeholder="Search stock…" value="${tradeFilter}" /><button class="pf-table-nav" onclick="window.navigateTo('trades')">VIEW ALL →</button></div>
-          ${renderTopTable(topTrades, tradeSort, 'trade')}
-        </div>
-
-        <div class="pf-table-card">
-          <div class="pf-table-header"><div class="pf-table-title">LONG-TERM</div><input type="text" class="search-input dash-filter" id="dash-long-filter" placeholder="Search stock…" value="${longFilter}" /><button class="pf-table-nav" onclick="window.navigateTo('longterm')">VIEW ALL →</button></div>
-          ${renderTopTable(topLong, longSort, 'long')}
-        </div>
-      </div>
-    `;
-
-    const wlPanel = container.querySelector('#dash-watchlist-panel');
-    if (wlPanel && window.Watchlist) window.Watchlist.renderPanel(wlPanel, () => renderDashboard(container));
-
-    bindSortClicks(container, 'trade', key => {
-      container._tradeSort = nextSort(container._tradeSort || { key: 'script', dir: 'asc' }, key);
-      renderDashboard(container);
-    });
-    bindSortClicks(container, 'long', key => {
-      container._longSort = nextSort(container._longSort || { key: 'script', dir: 'asc' }, key);
-      renderDashboard(container);
-    });
-
-    const tradeFilterEl = container.querySelector('#dash-trade-filter');
-    const longFilterEl = container.querySelector('#dash-long-filter');
-    const bindLiveFilter = (inputEl, key) => {
-      if (!inputEl) return;
-      inputEl.addEventListener('input', () => {
-        const scroller = document.querySelector('.view-container');
-        const scrollTop = scroller ? scroller.scrollTop : window.scrollY;
-        container[key] = inputEl.value.trim();
-        renderDashboard(container);
-        if (scroller) scroller.scrollTop = scrollTop;
-        else window.scrollTo({ top: scrollTop });
-        const fresh = container.querySelector(`#${inputEl.id}`);
-        if (fresh) {
-          fresh.focus();
-          fresh.selectionStart = fresh.selectionEnd = fresh.value.length;
-        }
-      });
-    };
-    bindLiveFilter(tradeFilterEl, '_tradeFilter');
-    bindLiveFilter(longFilterEl, '_longFilter');
-
-    const kpiRoi = container.querySelector('#dash-kpi-roi');
-    if (kpiRoi) kpiRoi.addEventListener('click', () => showRoiModal(realized));
-    const kpiNw = container.querySelector('#dash-kpi-nw');
-    if (kpiNw) kpiNw.addEventListener('click', () => showNetWorthModal(totals));
+    const life = (()=>{try{return JSON.parse(localStorage.getItem('sm_lifeos_daily_v1')||'{}')}catch{return {}}})();
+    const d = new Date().toISOString().slice(0,10);
+    const today = life[d] || { mood:'focused', notes:'', activities:[] };
+    const score = (today.activities||[]).reduce((s,a)=>s+Number(a.hours||0)*Number(a.weight||0),0)+Number(today.noTradeDisciplined?2:0);
+    const entries = Object.entries(life).slice(-30);
+    const monthProfit = Number(totals.trades.pl || 0) + Number(totals.longterm.pl || 0);
+    container.innerHTML = `<div class='md-kpis'>${[
+      ['Net Worth',fmtRs(Number(totals.total||0),0)],['Monthly Profitability',fmtRs(monthProfit,0)],['Cashflow',fmtRs(cash,0)],
+      ['Discipline Score',score.toFixed(1)],['Current Streak',String(entries.filter(([,v])=>((v.activities||[]).length)).length)],['Current Focus',today.mood||'focused']
+    ].map(k=>`<div class='md-kpi'><div>${k[0]}</div><strong>${k[1]}</strong></div>`).join('')}</div>
+    <div class='md-grid'><section class='md-panel'><h3>Daily Performance Tracker</h3><div class='md-score ${score>=0?'profit':'loss'}'>${score.toFixed(1)}</div><p>${today.notes||'No notes recorded today.'}</p><button class='btn-secondary' onclick=\"window.navigateTo('discipline')\">Edit Today</button></section>
+    <section class='md-panel'><h3>Monthly Performance Calendar</h3><div class='md-calendar'>${entries.map(([date,v])=>{const s=(v.activities||[]).reduce((x,a)=>x+Number(a.hours||0)*Number(a.weight||0),0)+Number(v.noTradeDisciplined?2:0);const cls=s>=8?'good':s>=2?'mixed':s>=0?'neutral':'bad';return `<button class='day ${cls}' title='${date} | ${v.mood||"focused"} | score ${s.toFixed(1)}' data-date='${date}'>${date.slice(-2)}</button>`;}).join('')}</div></section>
+    <section class='md-panel'><h3>Recent Journals + Lessons</h3><div class='md-archive'>${entries.slice(-5).reverse().map(([date,v])=>`<div class='arch-row'><span>${date}</span><strong>${v.mood||'focused'}</strong><small>${(v.notes||'').slice(0,64)||'No reflection logged.'}</small></div>`).join('')}</div>
+    <h3>Skill Snapshot</h3><button class='btn-secondary' onclick=\"window.navigateTo('skillprogress')\">Open Skill Progress</button></section></div>`;
   }
 
   function buildSipRoiCards() {

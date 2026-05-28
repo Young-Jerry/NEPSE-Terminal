@@ -15,10 +15,10 @@
     portfolio:   { title: 'Portfolio',             context: 'NEPSE', render: c => window._renderDashboard(c) },
     watchlist:   { title: 'Watchlist',             context: 'NEPSE', render: c => window._renderDashboard(c) },
     notes:       { title: 'Notes',                 context: 'NEPSE', render: c => window._renderTrades(c) },
-    discipline:  { title: 'Discipline',            context: 'LIFE OS', render: c => window._renderTrading(c) },
-    habits:      { title: 'Habits',                context: 'LIFE OS', render: c => window._renderPastTrades(c) },
-    reading:     { title: 'Reading',               context: 'LIFE OS', render: c => window._renderForexMarkets(c) },
-    skillprogress:{ title: 'Skill Progress',       context: 'LIFE OS', render: c => window._renderCalculator(c) },
+    discipline:  { title: 'Discipline',            context: 'LIFE OS', render: c => window._renderLifeOS(c) },
+    habits:      { title: 'Habits',                context: 'LIFE OS', render: c => window._renderLifeOS(c) },
+    reading:     { title: 'Reading',               context: 'LIFE OS', render: c => window._renderLifeOS(c) },
+    skillprogress:{ title: 'Skill Progress',       context: 'LIFE OS', render: c => window._renderLifeOS(c) },
     settings:    { title: 'Settings',              context: 'SYSTEM', render: c => window._renderSettings(c) },
   };
 
